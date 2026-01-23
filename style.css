@@ -1,0 +1,66 @@
+/* Bouton sur la page */
+.ai-reply-button {
+    margin-left: 5px;
+    background-color: #4CAF50; /* Vert */
+    color: white;
+    border-color: #4CAF50;
+}
+
+.ai-reply-button:hover {
+    background-color: #45a049;
+    color: white;
+}
+
+/* Page d'options */
+.options-container {
+    font-family: sans-serif;
+    padding: 20px;
+    max-width: 600px;
+    margin: 40px auto;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input[type='password'],
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+}
+
+#save {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#save:hover {
+    background-color: #0056b3;
+}
+
+#status {
+    margin-top: 15px;
+    font-weight: bold;
+}
