@@ -637,7 +637,7 @@ style.textContent = `
     /* Styles pour les boutons d\'action sur le code */
     .code-action-buttons {
         position: absolute;
-        top: 5px;
+        bottom: 5px;
         right: 5px;
         display: flex;
         gap: 5px;
