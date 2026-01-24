@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <title>Paramètres de Jeedom Community AI Helper</title>
@@ -28,7 +29,7 @@
             background: white;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             border: 1px solid var(--jeedom-border);
         }
 
@@ -78,7 +79,9 @@
             transition: border-color 0.2s;
         }
 
-        input:focus, select:focus, textarea:focus {
+        input:focus,
+        select:focus,
+        textarea:focus {
             outline: none;
             border-color: var(--jeedom-green);
             box-shadow: 0 0 0 2px rgba(148, 202, 2, 0.1);
@@ -100,22 +103,30 @@
             border: none;
         }
 
-        #save, #save-persona-btn, #add-tag-btn, #add-persona-btn {
+        #save,
+        #save-persona-btn,
+        #add-tag-btn,
+        #add-persona-btn {
             background-color: var(--jeedom-green);
             color: white;
         }
 
-        #save:hover, #save-persona-btn:hover, #add-tag-btn:hover, #add-persona-btn:hover {
+        #save:hover,
+        #save-persona-btn:hover,
+        #add-tag-btn:hover,
+        #add-persona-btn:hover {
             background-color: #82b202;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-secondary, #cancel-persona-btn {
+        .btn-secondary,
+        #cancel-persona-btn {
             background-color: #e0e0e0;
             color: var(--jeedom-text);
         }
 
-        .btn-danger, .delete-btn {
+        .btn-danger,
+        .delete-btn {
             background-color: var(--jeedom-danger);
             color: white;
         }
@@ -229,532 +240,230 @@
             padding: 20px !important;
         }
 
-                .footer-bandeau a {
+        .footer-bandeau a {
+            color: var(--jeedom-green) !important;
+            text-decoration: none;
+            font-weight: bold;
+        }
 
-                    color: var(--jeedom-green) !important;
+        /* Autocomplete for tags */
+        .autocomplete-container {
+            position: relative;
+        }
 
-                    text-decoration: none;
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid var(--jeedom-border);
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            max-height: 150px;
+            overflow-y: auto;
+        }
 
-                    font-weight: bold;
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--jeedom-border);
+        }
 
-                }
+        .autocomplete-items div:hover {
+            background-color: #e9e9e9;
+        }
 
-        
+        .autocomplete-active {
+            background-color: var(--jeedom-green) !important;
+            color: #ffffff;
+        }
+    </style>
+</head>
 
-                /* Autocomplete for tags */
-
-                .autocomplete-container {
-
-                    position: relative;
-
-                }
-
-                .autocomplete-items {
-
-                    position: absolute;
-
-                    border: 1px solid var(--jeedom-border);
-
-                    border-top: none;
-
-                    z-index: 99;
-
-                    top: 100%;
-
-                    left: 0;
-
-                    right: 0;
-
-                    background-color: white;
-
-                    max-height: 150px;
-
-                    overflow-y: auto;
-
-                }
-
-                .autocomplete-items div {
-
-                    padding: 10px;
-
-                    cursor: pointer;
-
-                    border-bottom: 1px solid var(--jeedom-border);
-
-                }
-
-                .autocomplete-items div:hover {
-
-                    background-color: #e9e9e9;
-
-                }
-
-                .autocomplete-active {
-
-                    background-color: var(--jeedom-green) !important;
-
-                    color: #ffffff;
-
-                }
-
-            </style>
-
-        </head>
-
-        <body>
-
-            <div class="options-container">
-
-                <h1>
-
-                    <img src="icons/icon48.png" alt="Logo" style="vertical-align: middle; margin-right: 15px; width: 32px; height: 32px;">
-
-                    Paramètres de Jeedom Community AI Helper
-
-                </h1>
-
-                
-
-                <div class="form-group">
-
-                    <label for="apiKey">Clé API Gemini</label>
-
-                    <input type="password" id="apiKey" placeholder="Entrez votre clé API Google AI Studio">
-
-                    <small style="color: #666; display: block; margin-top: 5px;">Votre clé est stockée localement dans votre navigateur.</small>
-
+<body>
+    <div class="options-container">
+        <h1>
+            <img src="icons/icon48.png" alt="Logo"
+                style="vertical-align: middle; margin-right: 15px; width: 32px; height: 32px;">
+            Paramètres de Jeedom Community AI Helper
+        </h1>
+        <div class="form-group">
+            <label for="apiKey">Clé API Gemini</label>
+            <input type="password" id="apiKey" placeholder="Entrez votre clé API Google AI Studio">
+            <small style="color: #666; display: block; margin-top: 5px;">Votre clé est stockée localement dans votre
+                navigateur.</small>
+        </div>
+        <hr>
+        <h2>Personas de l'IA</h2>
+        <div class="persona-container">
+            <div id="persona-list-container">
+                <p style="font-size: 13px; margin-bottom: 15px; color: #666;">Sélectionnez une persona à modifier ou
+                    ajoutez-en une nouvelle.</p>
+                <div id="persona-list"></div>
+                <button id="add-persona-btn" style="width: 100%;">+ Nouvelle Persona</button>
+                <div class="persona-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button id="export-personas-btn" class="btn-secondary" style="flex-grow: 1;">Exporter
+                        Personas</button>
+                    <button id="import-personas-btn" class="btn-secondary" style="flex-grow: 1;">Importer
+                        Personas</button>
+                    <input type="file" id="import-file" accept=".json" class="hidden">
                 </div>
-
-        
-
-                <hr>
-
-        
-
-                <h2>Personas de l'IA</h2>
-
-                <div class="persona-container">
-
-                    <div id="persona-list-container">
-
-                        <p style="font-size: 13px; margin-bottom: 15px; color: #666;">Sélectionnez une persona à modifier ou ajoutez-en une nouvelle.</p>
-
-                        <div id="persona-list"></div>
-
-                                                <button id="add-persona-btn" style="width: 100%;">+ Nouvelle Persona</button>
-
-                                                <div class="persona-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
-
-                                                    <button id="export-personas-btn" class="btn-secondary" style="flex-grow: 1;">Exporter Personas</button>
-
-                                                    <button id="import-personas-btn" class="btn-secondary" style="flex-grow: 1;">Importer Personas</button>
-
-                                                    <input type="file" id="import-file" accept=".json" class="hidden">
-
-                                                </div>
-
-                                            </div>
-
-                    <div id="persona-editor" class="hidden">
-
-                        <h3 id="persona-editor-title">Éditeur de Persona</h3>
-
-                        <input type="hidden" id="persona-id">
-
-                        <div class="form-group">
-
-                            <label for="persona-name">Nom de la Persona</label>
-
-                            <input type="text" id="persona-name" placeholder="Ex: Expert Technique">
-
-                        </div>
-
-                        <div class="form-group">
-
-                            <label for="persona-customPrompt">Instructions personnalisées</label>
-
-                            <textarea id="persona-customPrompt" rows="5" placeholder="Décrivez comment l'IA doit se comporter..."></textarea>
-
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-
-                            <div class="form-group">
-
-                                <label for="persona-tone">Ton</label>
-
-                                <select id="persona-tone">
-
-                                    <option value="amical et serviable">Amical et serviable</option>
-
-                                    <option value="professionnel et direct">Professionnel et direct</option>
-
-                                    <option value="enthousiaste et positif">Enthousiaste et positif</option>
-
-                                    <option value="humoristique">Humoristique</option>
-
-                                    <option value="neutre">Neutre</option>
-
-                                    <option value="sarcastique et condescendant">Sarcastique et condescendant</option>
-
-                                </select>
-
-                            </div>
-
-                            <div class="form-group">
-
-                                <label for="persona-length">Longueur</label>
-
-                                <select id="persona-length">
-
-                                    <option value="moyenne (quelques phrases)">Moyenne</option>
-
-                                    <option value="courte (1-2 phrases)">Courte</option>
-
-                                    <option value="détaillée (plusieurs paragraphes)">Détaillée</option>
-
-                                </select>
-
-                            </div>
-
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-
-                            <div class="form-group">
-
-                                <label for="persona-language">Langue</label>
-
-                                <input type="text" id="persona-language" placeholder="Français">
-
-                            </div>
-
-                            <div class="form-group">
-
-                                <label for="persona-model">Modèle d'IA</label>
-
-                                <select id="persona-model">
-
-                                    <option value="gemini-1.5-flash">1.5 Flash</option>
-
-                                    <option value="gemini-1.5-pro">1.5 Pro</option>
-
-                                    <option value="gemini-2.0-flash">2.0 Flash</option>
-
-                                    <option value="gemini-2.0-pro">2.0 Pro</option>
-
-                                    <option value="gemini-2.5-flash">2.5 Flash</option>
-
-                                    <option value="gemini-2.5-pro">2.5 Pro</option>
-
-                                    <option value="gemini-2.5-flash-lite">2.5 Flash Lite</option>
-
-                                </select>
-
-                            </div>
-
-                        </div>
-
-                        <div class="persona-editor-actions" style="display: flex; gap: 10px;">
-
-                            <button id="save-persona-btn">Enregistrer</button>
-
-                            <button id="cancel-persona-btn" class="btn-secondary">Annuler</button>
-
-                            <button id="delete-persona-btn" class="btn-danger hidden">Supprimer</button>
-
-                        </div>
-
-        
-
-                        <div class="persona-preview-container" style="margin-top: 20px;">
-
-                            <button id="test-persona-btn" class="btn-secondary">Tester ce Persona</button>
-
-                            <div id="persona-preview-result" style="margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px solid #eee; border-radius: 4px; min-height: 50px; white-space: pre-wrap; font-size: 13px; color: #333; display: none;"></div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-        
-
-                                <hr>
-
-        
-
-                                <h2>Apparence des réponses</h2>
-
-        
-
-                                <div class="form-group" style="display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px;">
-
-        
-
-                                    <input type="checkbox" id="enableIcons" style="width: 20px; height: 20px; cursor: pointer;">
-
-        
-
-                                    <label for="enableIcons" style="margin-bottom: 0; cursor: pointer;">Activer les emojis dans la réponse (l'IA décidera de leur pertinence)</label>
-
-        
-
-                                </div>
-
-        
-
-                
-
-        
-
-                                <hr>
-
-        
-
-                                                                <h2>Modèles d'IA par Fonctionnalité</h2>
-
-        
-
-                                
-
-        
-
-                                                                <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Choisissez un modèle d'IA spécifique pour chaque type de tâche. Si "Défaut (Persona/Fallback)" est sélectionné, l'extension utilisera le modèle de la persona active ou, si aucune n'est active, un modèle par défaut (généralement 'gemini-1.5-flash-latest' ou 'gemini-2.5-flash-lite' pour le résumé).</p>
-
-        
-
-                
-
-        
-
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-
-        
-
-                                    <div class="form-group">
-
-        
-
-                                        <label for="model-summarizeDiscussion">Résumé de Discussion</label>
-
-        
-
-                                        <select id="model-summarizeDiscussion" class="ai-model-select">
-
-        
-
-                                            <option value="default">Défaut (Persona/Fallback)</option>
-
-        
-
-                                            <!-- Options will be dynamically populated by JS -->
-
-        
-
-                                        </select>
-
-        
-
-                                    </div>
-
-        
-
-                                    <div class="form-group">
-
-        
-
-                                        <label for="model-explainCode">Expliquer le Code</label>
-
-        
-
-                                        <select id="model-explainCode" class="ai-model-select">
-
-        
-
-                                            <option value="default">Défaut (Persona/Fallback)</option>
-
-        
-
-                                        </select>
-
-        
-
-                                    </div>
-
-        
-
-                                    <div class="form-group">
-
-        
-
-                                        <label for="model-verifyCode">Vérifier le Code</label>
-
-        
-
-                                        <select id="model-verifyCode" class="ai-model-select">
-
-        
-
-                                            <option value="default">Défaut (Persona/Fallback)</option>
-
-        
-
-                                        </select>
-
-        
-
-                                    </div>
-
-        
-
-                                    <div class="form-group">
-
-        
-
-                                        <label for="model-optimizeCode">Optimiser le Code</label>
-
-        
-
-                                        <select id="model-optimizeCode" class="ai-model-select">
-
-        
-
-                                            <option value="default">Défaut (Persona/Fallback)</option>
-
-        
-
-                                        </select>
-
-        
-
-                                    </div>
-
-        
-
-                                    <div class="form-group">
-
-        
-
-                                        <label for="model-commentCode">Commenter le Code</label>
-
-        
-
-                                        <select id="model-commentCode" class="ai-model-select">
-
-        
-
-                                            <option value="default">Défaut (Persona/Fallback)</option>
-
-        
-
-                                        </select>
-
-        
-
-                                    </div>
-
-        
-
-                                    <div class="form-group">
-
-        
-
-                                        <label for="model-rephraseText">Reformuler le Texte</label>
-
-        
-
-                                        <select id="model-rephraseText" class="ai-model-select">
-
-        
-
-                                            <option value="default">Défaut (Persona/Fallback)</option>
-
-        
-
-                                        </select>
-
-        
-
-                                    </div>
-
-        
-
-                                </div>
-
-        
-
-                
-
-        
-
-                                <hr>
-
-        
-
-                                <h2>Liens utiles par Tag</h2>
-
-                <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Associez des liens de documentation ou de code à des tags spécifiques pour enrichir les réponses.</p>
-
-                                <div id="tag-links-list"></div>
-
-                                <div class="tag-link-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
-
-                                    <button id="export-tag-links-btn" class="btn-secondary" style="flex-grow: 1;">Exporter Liens</button>
-
-                                    <button id="import-tag-links-btn" class="btn-secondary" style="flex-grow: 1;">Importer Liens</button>
-
-                                    <input type="file" id="import-tag-links-file" accept=".json" class="hidden">
-
-                                </div>
-
-                                <div class="form-group" style="display: flex; gap: 10px; margin-top: 15px;">
-
-                    <div class="autocomplete-container" style="flex-basis: 150px;">
-
-                        <input type="text" id="new-tag-name" placeholder="Nom du tag">
-
-                    </div>
-
-                    <input type="text" id="new-tag-links" placeholder="Ex: Documentation|https://doc.jeedom.com, Github|..." style="flex-grow: 1;">
-
-                    <button id="add-tag-btn">Ajouter</button>
-
-                    <button id="cancel-tag-edit-btn" class="btn-secondary hidden">Annuler</button>
-
-                </div>
-
-        
-
-                <div style="margin-top: 40px; text-align: center; border-top: 2px solid var(--jeedom-border); padding-top: 20px;">
-
-                    <button id="save" style="padding: 15px 40px; font-size: 16px;">ENREGISTRER TOUS LES PARAMÈTRES</button>
-
-                    <div id="status"></div>
-
-                </div>
-
-                <div class="footer-bandeau" style="background-color:#673ab7;text-align: center; margin-top: 20px; padding: 10px; border-top: 1px solid #eee; font-size: 0.9em; color: #fff;">
-
-                    <p>Développé par Noodom</p>
-
-                    <a href="https://github.com/noodom" target="_blank" rel="noopener noreferrer"><img src="images/noodom.jpg" alt="Noodom Logo" style="border-radius:50%;width: 48px; height: 48px; vertical-align: middle; margin-left: 5px;"></a>
-
-                    <p>Version: <span id="extension-version"></span></p>
-
-                    <a href="https://paypal.me/noodomfr" target="_blank" rel="noopener noreferrer">
-
-                        <img alt="PayPal" src="images/paypal.svg">
-
-                    </a>
-
-                </div>
-
             </div>
+            <div id="persona-editor" class="hidden">
+                <h3 id="persona-editor-title">Éditeur de Persona</h3>
+                <input type="hidden" id="persona-id">
+                <div class="form-group">
+                    <label for="persona-name">Nom de la Persona</label>
+                    <input type="text" id="persona-name" placeholder="Ex: Expert Technique">
+                </div>
+                <div class="form-group">
+                    <label for="persona-customPrompt">Instructions personnalisées</label>
+                    <textarea id="persona-customPrompt" rows="5"
+                        placeholder="Décrivez comment l'IA doit se comporter..."></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="persona-tone">Ton</label>
+                        <select id="persona-tone">
+                            <option value="amical et serviable">Amical et serviable</option>
+                            <option value="professionnel et direct">Professionnel et direct</option>
+                            <option value="enthousiaste et positif">Enthousiaste et positif</option>
+                            <option value="humoristique">Humoristique</option>
+                            <option value="neutre">Neutre</option>
+                            <option value="sarcastique et condescendant">Sarcastique et condescendant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="persona-length">Longueur</label>
+                        <select id="persona-length">
+                            <option value="moyenne (quelques phrases)">Moyenne</option>
+                            <option value="courte (1-2 phrases)">Courte</option>
+                            <option value="détaillée (plusieurs paragraphes)">Détaillée</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="persona-language">Langue</label>
+                        <input type="text" id="persona-language" placeholder="Français">
+                    </div>
+                    <div class="form-group">
+                        <label for="persona-model">Modèle d'IA</label>
+                        <select id="persona-model">
+                            <option value="gemini-1.5-flash">1.5 Flash</option>
+                            <option value="gemini-1.5-pro">1.5 Pro</option>
+                            <option value="gemini-2.0-flash">2.0 Flash</option>
+                            <option value="gemini-2.0-pro">2.0 Pro</option>
+                            <option value="gemini-2.5-flash">2.5 Flash</option>
+                            <option value="gemini-2.5-pro">2.5 Pro</option>
+                            <option value="gemini-2.5-flash-lite">2.5 Flash Lite</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="persona-editor-actions" style="display: flex; gap: 10px;">
+                    <button id="save-persona-btn">Enregistrer</button>
+                    <button id="cancel-persona-btn" class="btn-secondary">Annuler</button>
+                    <button id="delete-persona-btn" class="btn-danger hidden">Supprimer</button>
+                </div>
+                <div class="persona-preview-container" style="margin-top: 20px;">
+                    <button id="test-persona-btn" class="btn-secondary">Tester ce Persona</button>
+                    <div id="persona-preview-result"
+                        style="margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px solid #eee; border-radius: 4px; min-height: 50px; white-space: pre-wrap; font-size: 13px; color: #333; display: none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr>
+        <h2>Apparence des réponses</h2>
+        <div class="form-group"
+            style="display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px;">
+            <input type="checkbox" id="enableIcons" style="width: 20px; height: 20px; cursor: pointer;">
+            <label for="enableIcons" style="margin-bottom: 0; cursor: pointer;">Activer les emojis dans la réponse (l'IA
+                décidera de leur pertinence)</label>
+        </div>
+        <hr>
+        <h2>Modèles d'IA par Fonctionnalité</h2>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Choisissez un modèle d'IA spécifique pour chaque
+            type de tâche. Si "Défaut (Persona/Fallback)" est sélectionné, l'extension utilisera le modèle de la persona
+            active ou, si aucune n'est active, un modèle par défaut (généralement 'gemini-1.5-flash-latest' ou
+            'gemini-2.5-flash-lite' pour le résumé).</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label for="model-summarizeDiscussion">Résumé de Discussion</label>
+                <select id="model-summarizeDiscussion" class="ai-model-select">
+                    <option value="default">Défaut (Persona/Fallback)</option>
+                    <!-- Options will be dynamically populated by JS -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="model-explainCode">Expliquer le Code</label>
+                <select id="model-explainCode" class="ai-model-select">
+                    <option value="default">Défaut (Persona/Fallback)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="model-verifyCode">Vérifier le Code</label>
+                <select id="model-verifyCode" class="ai-model-select">
+                    <option value="default">Défaut (Persona/Fallback)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="model-optimizeCode">Optimiser le Code</label>
+                <select id="model-optimizeCode" class="ai-model-select">
+                    <option value="default">Défaut (Persona/Fallback)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="model-commentCode">Commenter le Code</label>
+                <select id="model-commentCode" class="ai-model-select">
+                    <option value="default">Défaut (Persona/Fallback)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="model-rephraseText">Reformuler le Texte</label>
+                <select id="model-rephraseText" class="ai-model-select">
+                    <option value="default">Défaut (Persona/Fallback)</option>
+                </select>
+            </div>
+        </div>
+        <hr>
+        <h2>Liens utiles par Tag</h2>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Associez des liens de documentation ou de code à
+            des tags spécifiques pour enrichir les réponses.</p>
+        <div id="tag-links-list"></div>
+        <div class="tag-link-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+            <button id="export-tag-links-btn" class="btn-secondary" style="flex-grow: 1;">Exporter Liens</button>
+            <button id="import-tag-links-btn" class="btn-secondary" style="flex-grow: 1;">Importer Liens</button>
+            <input type="file" id="import-tag-links-file" accept=".json" class="hidden">
+        </div>
+        <div class="form-group" style="display: flex; gap: 10px; margin-top: 15px;">
+            <div class="autocomplete-container" style="flex-basis: 150px;">
+                <input type="text" id="new-tag-name" placeholder="Nom du tag">
+            </div>
+            <input type="text" id="new-tag-links" placeholder="Ex: Documentation|https://doc.jeedom.com, Github|..."
+                style="flex-grow: 1;">
+            <button id="add-tag-btn">Ajouter</button>
+            <button id="cancel-tag-edit-btn" class="btn-secondary hidden">Annuler</button>
+        </div>
+        <div
+            style="margin-top: 40px; text-align: center; border-top: 2px solid var(--jeedom-border); padding-top: 20px;">
+            <button id="save" style="padding: 15px 40px; font-size: 16px;">ENREGISTRER TOUS LES PARAMÈTRES</button>
+            <div id="status"></div>
+        </div>
+        <div class="footer-bandeau"
+            style="background-color:#673ab7;text-align: center; margin-top: 20px; padding: 10px; border-top: 1px solid #eee; font-size: 0.9em; color: #fff;">
+            <p>Développé par Noodom</p>
+            <a href="https://github.com/noodom" target="_blank" rel="noopener noreferrer"><img src="images/noodom.jpg"
+                    alt="Noodom Logo"
+                    style="border-radius:50%;width: 48px; height: 48px; vertical-align: middle; margin-left: 5px;"></a>
+            <p>Version: <span id="extension-version"></span></p>
+            <a href="https://paypal.me/noodomfr" target="_blank" rel="noopener noreferrer">
+                <img alt="PayPal" src="images/paypal.svg">
+            </a>
+        </div>
+    </div>
+    <script src="options.js"></script>
+</body>
 
-            <script src="options.js"></script>
-
-        </body>
-
-        </html>
+</html>
