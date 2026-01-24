@@ -1,12 +1,21 @@
-// État global pour conserver les personas et la dernière persona utilisée
+// État global pour conserver les personas, les paragraphes et la dernière persona utilisée
 let personas = [];
+let paragraphs = [];
 let lastUsedPersonaId = null;
+let defaultOpeningParagraphId = null;
+let defaultClosingParagraphId = null;
+let processedEditorIds = new Set();
+let showSpellCheckButton = true;
+let showRephraseButton = true;
+let showPersonaButton = true;
+let showParagraphsButton = true;
 
 // Icônes SVG
 const userIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125ZM200-200l-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Zm560 0-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Z"/></svg>`;
-const spinnerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" width="18" height="18" style="background: none;"><circle cx="50" cy="50" r="32" stroke-width="8" stroke="#93dbe9" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" keyTimes="0;1" values="0 50 50;360 50 50"></animateTransform></circle></svg>`;
+const spinnerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" width="18" height="18" style="background: none;"><circle cx="50" cy="50" r="32" stroke-width="8" stroke="#93dbe9" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" keyTimes="0;1" values="0 50 50;360 50 50"/></circle></svg>`;
 const spellCheckIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v200h-80v-200H200v560h240v80H200Zm520-40-56-56 103-104-103-104 56-56 160 160-160 160ZM280-600h320v-80H280v80Zm0 160h160v-80H280v80Z"/></svg>`;
 const rephraseIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80ZM120-80q-33 0-56.5-23.5T40-160v-640q0-33 23.5-56.5T120-880h520l280 280v520q0 33-23.5 56.5T840-80H120Zm540-550v-170H120v640h720v-470H660Zm-20 170h170L640-630v170Z"/></svg>`;
+const paragraphIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-80h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm-80 0v-560 560Z"/></svg>`; // New SVG for paragraphs button
 
 
 // --- Logique de communication avec le script d'arrière-plan ---
@@ -51,24 +60,60 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse(data);
         return true;
     }
+
+    // Gère l'insertion de texte provenant du popup
+    if (request.type === 'insertText') {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+            const start = activeElement.selectionStart;
+            const end = activeElement.selectionEnd;
+            const value = activeElement.value;
+
+            activeElement.value = value.substring(0, start) + request.text + value.substring(end);
+
+            // Déplace le curseur à la fin du texte inséré
+            activeElement.selectionStart = activeElement.selectionEnd = start + request.text.length;
+
+            // Déclenche un événement 'input' pour les frameworks JavaScript qui réagissent aux changements
+            activeElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            sendResponse({ status: 'success' });
+        } else {
+            sendResponse({ status: 'error', message: 'No active text input field found.' });
+        }
+        return true;
+    }
 });
 
 // --- Initialisation et création de l'interface utilisateur ---
 
 // Initialise l'extension en récupérant les données depuis le stockage
 function initialize() {
-    chrome.storage.local.get(['personas', 'lastUsedPersonaId'], (result) => {
+    chrome.storage.local.get(['personas', 'lastUsedPersonaId', 'paragraphs', 'defaultOpeningParagraphId', 'defaultClosingParagraphId',
+        'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'], (result) => {
         if (result.personas && result.personas.length > 0) {
             personas = result.personas;
-            lastUsedPersonaId = result.lastUsedPersonaId;
-            findAndAddButtons();
         }
+        if (result.paragraphs && result.paragraphs.length > 0) {
+            paragraphs = result.paragraphs;
+        }
+        lastUsedPersonaId = result.lastUsedPersonaId;
+        defaultOpeningParagraphId = result.defaultOpeningParagraphId || null;
+        defaultClosingParagraphId = result.defaultClosingParagraphId || null;
+        showSpellCheckButton = result.showSpellCheckButton !== undefined ? result.showSpellCheckButton : true;
+        showRephraseButton = result.showRephraseButton !== undefined ? result.showRephraseButton : true;
+        showPersonaButton = result.showPersonaButton !== undefined ? result.showPersonaButton : true;
+        showParagraphsButton = result.showParagraphsButton !== undefined ? result.showParagraphsButton : true;
+        findAndAddButtons();
     });
 }
 
 // Cherche les barres d'outils de l'éditeur et y ajoute les boutons
 function findAndAddButtons() {
-    if (personas.length === 0) return;
+    // Les boutons AI et Paragraphes ne sont ajoutés que si des données existent.
+    // Il est possible d'ajouter le bouton des paragraphes même s'il n'y en a pas encore,
+    // avec un message "Aucun paragraphe..." dans le menu déroulant.
+    if (personas.length === 0 && paragraphs.length === 0) return;
 
     const toolbars = document.querySelectorAll('.d-editor-button-bar:not(.ai-processed)');
 
@@ -87,84 +132,132 @@ function findAndAddButtons() {
         container.style.position = 'relative';
 
         // --- Bouton de correction orthographique ---
-        const spellCheckButton = document.createElement('button');
-        spellCheckButton.className = 'btn btn-default spell-check-button';
-        spellCheckButton.innerHTML = spellCheckIconSvg;
-        spellCheckButton.title = 'Corriger l\'orthographe';
-        spellCheckButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleSpellCheckClick(spellCheckButton);
-        });
+        if (showSpellCheckButton) {
+            const spellCheckButton = document.createElement('button');
+            spellCheckButton.className = 'btn btn-default spell-check-button';
+            spellCheckButton.innerHTML = spellCheckIconSvg;
+            spellCheckButton.title = 'Corriger l\'orthographe';
+            spellCheckButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleSpellCheckClick(spellCheckButton);
+            });
+            container.appendChild(spellCheckButton);
+        }
 
         // --- Bouton de reformulation (avec menu) ---
-        const rephraseButton = document.createElement('button');
-        rephraseButton.className = 'btn btn-default rephrase-button';
-        rephraseButton.innerHTML = rephraseIconSvg;
-        rephraseButton.title = 'Reformuler la réponse par IA';
+        if (showRephraseButton) {
+            const rephraseButton = document.createElement('button');
+            rephraseButton.className = 'btn btn-default rephrase-button';
+            rephraseButton.innerHTML = rephraseIconSvg;
+            rephraseButton.title = 'Reformuler la réponse par IA';
 
-        const rephraseMenu = document.createElement('div');
-        rephraseMenu.className = 'persona-menu hidden';
+            const rephraseMenu = document.createElement('div');
+            rephraseMenu.className = 'persona-menu hidden';
 
-        personas.forEach(persona => {
-            const menuItem = document.createElement('div');
-            menuItem.className = 'persona-menu-item';
-            menuItem.textContent = persona.name;
-            menuItem.dataset.id = persona.id;
-            menuItem.addEventListener('click', (e) => {
+            personas.forEach(persona => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'persona-menu-item';
+                menuItem.textContent = persona.name;
+                menuItem.dataset.id = persona.id;
+                menuItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    rephraseMenu.classList.add('hidden');
+                    handleRephraseClick(rephraseButton, persona.id);
+                });
+                rephraseMenu.appendChild(menuItem);
+            });
+
+            rephraseButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                rephraseMenu.classList.add('hidden');
-                handleRephraseClick(rephraseButton, persona.id);
+                // Fermer les autres menus au cas où
+                document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
+                rephraseMenu.classList.toggle('hidden');
             });
-            rephraseMenu.appendChild(menuItem);
-        });
-
-        rephraseButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            // Fermer les autres menus au cas où
-            document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
-            rephraseMenu.classList.toggle('hidden');
-        });
+            container.appendChild(rephraseButton);
+            container.appendChild(rephraseMenu);
+        }
 
         // --- Bouton de génération automatique (avec menu) ---
-        const personaButton = document.createElement('button');
-        personaButton.className = 'btn btn-default persona-button';
-        personaButton.innerHTML = userIconSvg;
-        personaButton.title = 'Génération automatique par IA';
-        
-        const personaMenu = document.createElement('div');
-        personaMenu.className = 'persona-menu hidden';
+        if (showPersonaButton) {
+            const personaButton = document.createElement('button');
+            personaButton.className = 'btn btn-default persona-button';
+            personaButton.innerHTML = userIconSvg;
+            personaButton.title = 'Génération automatique par IA';
 
-        personas.forEach(persona => {
-            const menuItem = document.createElement('div');
-            menuItem.className = 'persona-menu-item';
-            menuItem.textContent = persona.name;
-            menuItem.dataset.id = persona.id;
-            menuItem.addEventListener('click', (e) => {
+            const personaMenu = document.createElement('div');
+            personaMenu.className = 'persona-menu hidden';
+
+            personas.forEach(persona => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'persona-menu-item';
+                menuItem.textContent = persona.name;
+                menuItem.dataset.id = persona.id;
+                menuItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    personaMenu.classList.add('hidden');
+                    handleAiButtonClick(personaButton, persona.id);
+                });
+                personaMenu.appendChild(menuItem);
+            });
+
+            personaButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                personaMenu.classList.add('hidden');
-                handleAiButtonClick(personaButton, persona.id);
+                // Fermer les autres menus au cas où
+                document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
+                personaMenu.classList.toggle('hidden');
             });
-            personaMenu.appendChild(menuItem);
-        });
+            container.appendChild(personaButton);
+            container.appendChild(personaMenu);
+        }
 
-        personaButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            // Fermer les autres menus au cas où
-            document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
-            personaMenu.classList.toggle('hidden');
-        });
+        // --- Nouveau Bouton Paragraphes pré-enregistrés (avec menu) ---
+        if (showParagraphsButton) {
+            const paragraphsButton = document.createElement('button');
+            paragraphsButton.className = 'btn btn-default paragraphs-button';
+            paragraphsButton.innerHTML = paragraphIconSvg; // Utilise la nouvelle icône
+            paragraphsButton.title = 'Insérer un paragraphe pré-enregistré';
 
-        // --- Ajout des éléments au DOM ---
-        container.appendChild(spellCheckButton);
-        container.appendChild(rephraseButton);
-        container.appendChild(rephraseMenu);
-        container.appendChild(personaButton);
-        container.appendChild(personaMenu);
-        
+            const paragraphsMenu = document.createElement('div');
+            paragraphsMenu.className = 'persona-menu hidden'; // Réutiliser la classe de style 'persona-menu'
+
+            if (paragraphs.length > 0) {
+                paragraphs.forEach(paragraph => {
+                    const menuItem = document.createElement('div');
+                    menuItem.className = 'persona-menu-item';
+                    menuItem.textContent = paragraph.title;
+                    menuItem.dataset.content = paragraph.content; // Stocker le contenu pour l'insertion
+                    menuItem.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        paragraphsMenu.classList.add('hidden');
+                        insertReply(paragraph.content); // Insérer le contenu du paragraphe
+                    });
+                    paragraphsMenu.appendChild(menuItem);
+                });
+            } else {
+                const noParagraphsItem = document.createElement('div');
+                noParagraphsItem.className = 'persona-menu-item';
+                noParagraphsItem.textContent = 'Aucun paragraphe configuré.';
+                noParagraphsItem.style.fontStyle = 'italic';
+                noParagraphsItem.style.color = '#888';
+                paragraphsMenu.appendChild(noParagraphsItem);
+            }
+
+            paragraphsButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                // Fermer les autres menus au cas où
+                document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
+                paragraphsMenu.classList.toggle('hidden');
+            });
+            container.appendChild(paragraphsButton);
+            container.appendChild(paragraphsMenu);
+        }
+
         toolbar.appendChild(container);
         toolbar.classList.add('ai-processed');
     });
@@ -243,7 +336,14 @@ async function handleRephraseClick(button, personaId) {
                 console.error('Erreur de reformulation:', chrome.runtime.lastError || response.error);
                 button.title = `Erreur: ${response.error || chrome.runtime.lastError.message}`;
             } else {
-                insertReply(response.text);
+                let finalText = response.text;
+                if (persona.prefix) {
+                    finalText = persona.prefix + '\n\n' + finalText;
+                }
+                if (persona.suffix) {
+                    finalText = finalText + '\n\n' + persona.suffix;
+                }
+                insertReply(finalText);
                 // Mettre à jour la dernière persona utilisée
                 chrome.storage.local.set({ lastUsedPersonaId: persona.id });
             }
@@ -286,7 +386,14 @@ function handleAiButtonClick(button, personaId) {
             console.error('Erreur de l\'API Gemini:', response.error);
             button.title = `Erreur - ${response.error}`;
         } else {
-            insertReply(response.text);
+            let finalText = response.text;
+            if (persona.prefix) {
+                finalText = persona.prefix + '\n\n' + finalText;
+            }
+            if (persona.suffix) {
+                finalText = finalText + '\n\n' + persona.suffix;
+            }
+            insertReply(finalText);
         }
     });
 }
@@ -295,7 +402,15 @@ function handleAiButtonClick(button, personaId) {
 function insertReply(text) {
     const editorTextarea = document.querySelector('.d-editor-input');
     if (editorTextarea) {
-        editorTextarea.value = text;
+        const start = editorTextarea.selectionStart;
+        const end = editorTextarea.selectionEnd;
+        const value = editorTextarea.value;
+
+        editorTextarea.value = value.substring(0, start) + text + value.substring(end);
+
+        // Déplace le curseur à la fin du texte inséré
+        editorTextarea.selectionStart = editorTextarea.selectionEnd = start + text.length;
+
         editorTextarea.dispatchEvent(new Event('input', { bubbles: true }));
     } else {
         console.error('Impossible de trouver l\'éditeur de réponse.');
@@ -311,6 +426,7 @@ document.addEventListener('click', () => {
 function runObserver() {
     findAndAddButtons();
     processCodeBlocks();
+    processEditors();
 }
 
 initialize();
@@ -370,7 +486,7 @@ function handleCodeActionClick(action, button, codeElement) {
 
     chrome.runtime.sendMessage({ type: action, code: code }, (response) => {
         if (chrome.runtime.lastError || response.error) {
-            console.error(`Erreur pour l'action ${action}:`, chrome.runtime.lastError || response.error);
+            console.error(`Erreur pour l\'action ${action}:`, chrome.runtime.lastError || response.error);
             showCodeAiModal(`<div style="color: red;">Erreur: ${response.error || chrome.runtime.lastError.message}</div>`);
         } else {
             showCodeAiModal(response.text);
@@ -446,6 +562,46 @@ function processCodeBlocks() {
 }
 createCodeAiModal();
 
+// Gère l'insertion des paragraphes par défaut dans les nouveaux éditeurs
+function processEditors() {
+    const editorTextareas = document.querySelectorAll('.d-editor-input');
+    editorTextareas.forEach(editorTextarea => {
+        // Generate a unique ID for the editor if it doesn't have one
+        const editorId = editorTextarea.id || `editor-${Math.random().toString(36).substring(2, 9)}`;
+        editorTextarea.id = editorId;
+
+        if (processedEditorIds.has(editorId)) {
+            return; // Already processed
+        }
+
+        // Check if the editor is empty or only contains whitespace
+        if (editorTextarea.value.trim() === '') {
+            let initialText = '';
+            const openingParagraph = paragraphs.find(p => p.title === defaultOpeningParagraphId);
+            const closingParagraph = paragraphs.find(p => p.title === defaultClosingParagraphId);
+
+            if (openingParagraph) {
+                initialText += openingParagraph.content.trim();
+            }
+
+            // If both opening and closing paragraphs exist, add a separator
+            if (openingParagraph && closingParagraph) {
+                initialText += '\n\n'; // Add some space between them
+            }
+
+            if (closingParagraph) {
+                initialText += closingParagraph.content.trim();
+            }
+
+            if (initialText) {
+                editorTextarea.value = initialText;
+                editorTextarea.dispatchEvent(new Event('input', { bubbles: true })); // Trigger input event
+            }
+        }
+        processedEditorIds.add(editorId); // Mark as processed
+    });
+}
+
 
 // --- STYLES ---
 const style = document.createElement('style');
@@ -478,7 +634,7 @@ style.textContent = `
         background-color: #4a4a4a;
     }
 
-    /* Styles pour les boutons d'action sur le code */
+    /* Styles pour les boutons d\'action sur le code */
     .code-action-buttons {
         position: absolute;
         top: 5px;
@@ -573,7 +729,7 @@ style.textContent = `
         word-wrap: break-word;
     }
 
-    /* Styles pour l'en-tête de la modale et les boutons */
+    /* Styles pour l\'en-tête de la modale et les boutons */
     .modal-header-buttons {
         position: absolute;
         top: 10px;
@@ -608,7 +764,7 @@ style.textContent = `
         background-color: rgba(255, 255, 255, 0.1);
         color: #ccc;
     }
-    /* Style spécifique pour l'icône du bouton de copie */
+    /* Style spécifique pour l\'icône du bouton de copie */
     #code-ai-modal-copy svg {
         width: 18px;
         height: 18px;

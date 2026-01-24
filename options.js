@@ -1,10 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- 0. Modèles d'IA disponibles ---
     const AVAILABLE_MODELS = [
-        { value: 'gemini-1.5-flash', label: '1.5 Flash' },
-        { value: 'gemini-1.5-pro', label: '1.5 Pro' },
-        { value: 'gemini-2.0-flash', label: '2.0 Flash' },
-        { value: 'gemini-2.0-pro', label: '2.0 Pro' },
+        { value: 'gemini-3-flash', label: '3 Flash' },
+        { value: 'gemini-3-pro', label: '3 Pro' },
         { value: 'gemini-2.5-flash', label: '2.5 Flash' },
         { value: 'gemini-2.5-pro', label: '2.5 Pro' },
         { value: 'gemini-2.5-flash-lite', label: '2.5 Flash Lite' }
@@ -17,6 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Paramètres globaux
     const apiKeyInput = document.getElementById('apiKey');
     const enableIconsCheckbox = document.getElementById('enableIcons');
+    const showSpellCheckButtonCheckbox = document.getElementById('show-spell-check-button');
+    const showRephraseButtonCheckbox = document.getElementById('show-rephrase-button');
+    const showPersonaButtonCheckbox = document.getElementById('show-persona-button');
+    const showParagraphsButtonCheckbox = document.getElementById('show-paragraphs-button');
 
     // Interface des Personas
     const personaListDiv = document.getElementById('persona-list');
@@ -26,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const personaIdInput = document.getElementById('persona-id');
     const personaNameInput = document.getElementById('persona-name');
     const personaCustomPromptInput = document.getElementById('persona-customPrompt');
+    const personaPrefixInput = document.getElementById('persona-prefix');
+    const personaSuffixInput = document.getElementById('persona-suffix');
     const personaToneInput = document.getElementById('persona-tone');
     const personaLengthInput = document.getElementById('persona-length');
     const personaLanguageInput = document.getElementById('persona-language');
@@ -58,9 +62,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const importTagLinksBtn = document.getElementById('import-tag-links-btn');
     const importTagLinksFile = document.getElementById('import-tag-links-file');
 
+    // Interface des paragraphes pré-enregistrés
+    const paragraphsListDiv = document.getElementById('paragraphs-list');
+    const newParagraphTitleInput = document.getElementById('new-paragraph-title');
+    const newParagraphContentInput = document.getElementById('new-paragraph-content');
+    const addParagraphBtn = document.getElementById('add-paragraph-btn');
+    const cancelParagraphEditBtn = document.getElementById('cancel-paragraph-edit-btn');
+    const exportParagraphsBtn = document.getElementById('export-paragraphs-btn');
+    const importParagraphsBtn = document.getElementById('import-paragraphs-btn');
+    const importParagraphsFile = document.getElementById('import-paragraphs-file');
+    const defaultOpeningParagraphSelect = document.getElementById('default-opening-paragraph');
+    const defaultClosingParagraphSelect = document.getElementById('default-closing-paragraph');
+
     // Général
     const saveButton = document.getElementById('save');
     const statusDiv = document.getElementById('status');
+
 
     // --- 2. État de l'application ---
     let personas = [];
@@ -69,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let editingTagIndex = -1;
     let allKnownTags = [];
     let autocompleteCurrentFocus = -1;
+    let paragraphs = [];
+    let editingParagraphIndex = -1;
 
     // --- Assistant pour les messages de statut ---
     function showStatusMessage(message, isError = false) {
@@ -187,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (validPersonas.length === 0 && importedData.length > 0) {
                     throw new Error('Aucune persona valide trouvée dans le fichier.');
                 }
-                
+
                 // Fusionner ou remplacer ? Pour simplifier, remplacement ou ajout si nouvel ID.
                 // Une logique plus complexe pourrait demander à l'utilisateur ou fusionner par ID.
                 validPersonas.forEach(importedPersona => {
@@ -198,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         personas.push(importedPersona); // Ajouter nouveau
                     }
                 });
-                
+
                 // S'assurer que les ID sont uniques pour les nouvelles personas qui pourraient entrer en conflit
                 personas = personas.map(p => {
                     if (!p.id || typeof p.id !== 'string') {
@@ -206,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     return p;
                 });
-                
+
                 // Filtrer les doublons basés sur l'ID après une potentielle réaffectation
                 const uniquePersonas = [];
                 const ids = new Set();
@@ -314,6 +333,8 @@ document.addEventListener('DOMContentLoaded', () => {
         personaIdInput.value = persona.id;
         personaNameInput.value = persona.name;
         personaCustomPromptInput.value = persona.customPrompt;
+        personaPrefixInput.value = persona.prefix || '';
+        personaSuffixInput.value = persona.suffix || '';
         personaToneInput.value = persona.tone;
         personaLengthInput.value = persona.length;
         personaLanguageInput.value = persona.language;
@@ -330,11 +351,13 @@ document.addEventListener('DOMContentLoaded', () => {
         personaIdInput.value = '';
         personaNameInput.value = '';
         personaCustomPromptInput.value = 'Réponds de manière utile et amicale.';
+        personaPrefixInput.value = '';
+        personaSuffixInput.value = '';
         personaToneInput.value = 'amical et serviable';
         personaLengthInput.value = 'moyenne (quelques phrases)';
         personaLanguageInput.value = 'Français';
         personaModelInput.value = 'gemini-2.5-flash-lite';
-        
+
         deletePersonaBtn.classList.add('hidden');
         renderPersonaList();
         showPersonaEditor(true);
@@ -351,6 +374,8 @@ document.addEventListener('DOMContentLoaded', () => {
             id: currentEditingPersonaId || Date.now().toString(),
             name: name,
             customPrompt: personaCustomPromptInput.value,
+            prefix: personaPrefixInput.value,
+            suffix: personaSuffixInput.value,
             tone: personaToneInput.value,
             length: personaLengthInput.value,
             language: personaLanguageInput.value,
@@ -383,6 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentPersona = {
             name: personaNameInput.value.trim(),
             customPrompt: personaCustomPromptInput.value,
+            prefix: personaPrefixInput.value,
+            suffix: personaSuffixInput.value,
             tone: personaToneInput.value,
             length: personaLengthInput.value,
             language: personaLanguageInput.value,
@@ -442,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (validTagLinks.length === 0 && importedData.length > 0) {
                     throw new Error('Aucun lien par tag valide trouvé dans le fichier.');
                 }
-                
+
                 // Pour simplifier, remplacer l'existant ou ajouter un nouveau.
                 // Une logique plus complexe pourrait demander à l'utilisateur ou fusionner par nom de tag.
                 validTagLinks.forEach(importedMapping => {
@@ -539,7 +566,131 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTagLinkList();
     }
 
-    // --- 6. Sauvegarde/Chargement Principal ---
+    // --- 6. Logique des paragraphes pré-enregistrés ---
+    function renderParagraphsList() {
+        paragraphs.sort((a, b) => a.title.localeCompare(b.title));
+        paragraphsListDiv.innerHTML = '';
+        paragraphs.forEach((paragraph, index) => {
+            const item = document.createElement('div');
+            item.className = 'paragraph-list-item';
+            item.innerHTML = `
+                <span class="paragraph-title">${paragraph.title}</span>
+                <span class="paragraph-content">${paragraph.content}</span>
+                <button class="edit-paragraph-btn" data-index="${index}">Modifier</button>
+                <button class="delete-paragraph-btn" data-index="${index}">Supprimer</button>
+            `;
+            paragraphsListDiv.appendChild(item);
+        });
+
+        document.querySelectorAll('.delete-paragraph-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const indexToRemove = parseInt(e.target.dataset.index, 10);
+                if (confirm('Êtes-vous sûr de vouloir supprimer ce paragraphe ?')) {
+                    paragraphs.splice(indexToRemove, 1);
+                    renderParagraphsList();
+                }
+            });
+        });
+
+        document.querySelectorAll('.edit-paragraph-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const indexToEdit = parseInt(e.target.dataset.index, 10);
+                const paragraphToEdit = paragraphs[indexToEdit];
+                newParagraphTitleInput.value = paragraphToEdit.title;
+                newParagraphContentInput.value = paragraphToEdit.content;
+                addParagraphBtn.textContent = 'Mettre à jour le paragraphe';
+                cancelParagraphEditBtn.classList.remove('hidden');
+                editingParagraphIndex = indexToEdit;
+            });
+        });
+    }
+
+    function populateDefaultParagraphSelects() {
+        [defaultOpeningParagraphSelect, defaultClosingParagraphSelect].forEach(selectElement => {
+            selectElement.innerHTML = '<option value="">Aucun</option>'; // Always have a "None" option
+            paragraphs.forEach(paragraph => {
+                const option = document.createElement('option');
+                option.value = paragraph.title; // Use title as ID for simplicity
+                option.textContent = paragraph.title;
+                selectElement.appendChild(option);
+            });
+        });
+    }
+
+    function saveParagraph() {
+        const title = newParagraphTitleInput.value.trim();
+        const content = newParagraphContentInput.value.trim();
+        if (!title || !content) return;
+
+        if (editingParagraphIndex !== -1) {
+            paragraphs[editingParagraphIndex] = { title, content };
+            editingParagraphIndex = -1;
+            addParagraphBtn.textContent = 'Ajouter le paragraphe';
+            cancelParagraphEditBtn.classList.add('hidden');
+        } else {
+            if (paragraphs.some(p => p.title === title)) {
+                alert('Ce titre de paragraphe existe déjà.');
+                return;
+            }
+            paragraphs.push({ title, content });
+        }
+        newParagraphTitleInput.value = '';
+        newParagraphContentInput.value = '';
+        renderParagraphsList();
+    }
+
+    function cancelEditParagraph() {
+        newParagraphTitleInput.value = '';
+        newParagraphContentInput.value = '';
+        editingParagraphIndex = -1;
+        addParagraphBtn.textContent = 'Ajouter le paragraphe';
+        cancelParagraphEditBtn.classList.add('hidden');
+    }
+
+    function exportParagraphs() {
+        const dataStr = JSON.stringify(paragraphs, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'jeedom_ai_paragraphs.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showStatusMessage('Paragraphes exportés avec succès !');
+    }
+
+    function importParagraphs(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (!Array.isArray(importedData)) {
+                    throw new Error('Le fichier JSON doit contenir un tableau de paragraphes.');
+                }
+                const validParagraphs = importedData.filter(p => p.title && p.content);
+                validParagraphs.forEach(importedParagraph => {
+                    const existingIndex = paragraphs.findIndex(p => p.title === importedParagraph.title);
+                    if (existingIndex > -1) {
+                        paragraphs[existingIndex] = importedParagraph;
+                    } else {
+                        paragraphs.push(importedParagraph);
+                    }
+                });
+                renderParagraphsList();
+                showStatusMessage('Paragraphes importés avec succès !');
+            } catch (error) {
+                showStatusMessage(`Erreur lors de l'importation: ${error.message}`, true);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // --- 8. Sauvegarde/Chargement Principal ---
 
     function populateModelSelects() {
         const selects = document.querySelectorAll('.ai-model-select');
@@ -557,16 +708,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadSettings() {
         const keysToLoad = [
-            'apiKey', 'enableIcons', 'personas', 'tagLinkMappings', 'tagToPrepopulate', 'allKnownTags', 'modelSettings'
+            'apiKey', 'enableIcons', 'personas', 'tagLinkMappings', 'paragraphs', 'tagToPrepopulate', 'allKnownTags', 'modelSettings',
+            'defaultOpeningParagraphId', 'defaultClosingParagraphId',
+            'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'
         ];
-        
+
         chrome.storage.local.get(keysToLoad, (result) => {
             // Remplir les modèles
             populateModelSelects();
 
             // Chargement des paramètres globaux
             if (result.apiKey) apiKeyInput.value = result.apiKey;
-            if (result.enableIcons) enableIconsCheckbox.checked = result.enableIcons;
+            enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true; // Default to true
+
+            // Chargement des paramètres de visibilité des boutons
+            showSpellCheckButtonCheckbox.checked = result.showSpellCheckButton !== undefined ? result.showSpellCheckButton : true;
+            showRephraseButtonCheckbox.checked = result.showRephraseButton !== undefined ? result.showRephraseButton : true;
+            showPersonaButtonCheckbox.checked = result.showPersonaButton !== undefined ? result.showPersonaButton : true;
+            showParagraphsButtonCheckbox.checked = result.showParagraphsButton !== undefined ? result.showParagraphsButton : true;
+
 
             // Chargement des personas
             if (result.personas && result.personas.length > 0) {
@@ -581,7 +741,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         tone: 'amical et serviable',
                         length: 'moyenne (quelques phrases)',
                         language: 'Français',
-                        model: 'gemini-2.5-flash-lite'
+                        model: 'gemini-2.5-flash-lite',
+                        prefix: '',
+                        suffix: ''
                     },
                     {
                         id: 'default-2',
@@ -590,7 +752,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         tone: 'professionnel et direct',
                         length: 'détaillée (plusieurs paragraphes)',
                         language: 'Français',
-                        model: 'gemini-2.5-flash-lite'
+                        model: 'gemini-2.5-flash-lite',
+                        prefix: '',
+                        suffix: ''
                     },
                     {
                         id: 'default-3',
@@ -599,7 +763,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         tone: 'neutre',
                         length: 'courte (1-2 phrases)',
                         language: 'Français',
-                        model: 'gemini-2.5-flash-lite'
+                        model: 'gemini-2.5-flash-lite',
+                        prefix: '',
+                        suffix: ''
                     },
                     {
                         id: 'default-4',
@@ -608,7 +774,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         tone: 'sarcastique et condescendant',
                         length: 'courte (1-2 phrases)',
                         language: 'Français',
-                        model: 'gemini-2.5-flash-lite'
+                        model: 'gemini-2.5-flash-lite',
+                        prefix: '',
+                        suffix: ''
                     }
                 ];
             }
@@ -625,6 +793,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 ];
             }
             renderTagLinkList();
+
+            // Chargement des paragraphes pré-enregistrés
+            if (result.paragraphs && result.paragraphs.length > 0) {
+                paragraphs = result.paragraphs;
+            } else {
+                paragraphs = [
+                    { title: 'Salutations', content: 'Bonjour,\n\n' },
+                    { title: 'Remerciements', content: 'Merci pour votre retour.' },
+                    { title: 'Demande de logs', content: 'Pourriez-vous fournir les logs correspondants ?' }
+                ];
+            }
+            renderParagraphsList();
+            populateDefaultParagraphSelects(); // Populate the new selects
+
+            // Chargement des valeurs par défaut des paragraphes
+            if (result.defaultOpeningParagraphId) {
+                defaultOpeningParagraphSelect.value = result.defaultOpeningParagraphId;
+            }
+            if (result.defaultClosingParagraphId) {
+                defaultClosingParagraphSelect.value = result.defaultClosingParagraphId;
+            }
 
             // Charger les tags connus pour l'autocomplétion
             if (result.allKnownTags) {
@@ -660,6 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
             enableIcons: enableIconsCheckbox.checked,
             personas: personas,
             tagLinkMappings: tagLinkMappings,
+            paragraphs: paragraphs,
             modelSettings: {
                 summarizeDiscussion: modelSummarizeDiscussionSelect.value,
                 explainCode: modelExplainCodeSelect.value,
@@ -667,7 +857,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 optimizeCode: modelOptimizeCodeSelect.value,
                 commentCode: modelCommentCodeSelect.value,
                 rephraseText: modelRephraseTextSelect.value
-            }
+            },
+            defaultOpeningParagraphId: defaultOpeningParagraphSelect.value,
+            defaultClosingParagraphId: defaultClosingParagraphSelect.value,
+            showSpellCheckButton: showSpellCheckButtonCheckbox.checked,
+            showRephraseButton: showRephraseButtonCheckbox.checked,
+            showPersonaButton: showPersonaButtonCheckbox.checked,
+            showParagraphsButton: showParagraphsButtonCheckbox.checked
         }, () => {
             if (showStatus) {
                 showStatusMessage('Paramètres enregistrés !');
@@ -683,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelTagEditBtn.classList.add('hidden');
     }
 
-    // --- 7. Écouteurs d'Événements ---
+    // --- 9. Écouteurs d'Événements ---
     addPersonaBtn.addEventListener('click', clearAndShowEditor);
     savePersonaBtn.addEventListener('click', saveCurrentPersona);
     cancelPersonaBtn.addEventListener('click', () => showPersonaEditor(false));
@@ -698,6 +894,14 @@ document.addEventListener('DOMContentLoaded', () => {
     importTagLinksFile.addEventListener('change', importTagLinks);
     addTagBtn.addEventListener('click', saveTagLink);
     cancelTagEditBtn.addEventListener('click', cancelEditTagLink);
+
+    // Paragraphes pré-enregistrés
+    addParagraphBtn.addEventListener('click', saveParagraph);
+    cancelParagraphEditBtn.addEventListener('click', cancelEditParagraph);
+    exportParagraphsBtn.addEventListener('click', exportParagraphs);
+    importParagraphsBtn.addEventListener('click', () => importParagraphsFile.click());
+    importParagraphsFile.addEventListener('change', importParagraphs);
+
     saveButton.addEventListener('click', saveSettings);
     testPersonaBtn.addEventListener('click', handleTestPersona);
 
@@ -718,6 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- 8. Chargement Initial ---
+    // --- 10. Chargement Initial ---
     loadSettings();
 });

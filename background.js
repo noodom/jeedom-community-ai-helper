@@ -229,7 +229,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                 if (!response.ok) { throw new Error(`Erreur HTTP ! statut : ${response.status}`); }
                 const data = await response.json();
-                sendResponseAsync({ text: data.candidates[0].content.parts[0].text.trim() });
+                let testText = data.candidates[0].content.parts[0].text.trim();
+                if (persona.prefix) {
+                    testText = persona.prefix + '\n\n' + testText;
+                }
+                if (persona.suffix) {
+                    testText = testText + '\n\n' + persona.suffix;
+                }
+                sendResponseAsync({ text: testText });
 
             } catch (error) {
                 sendResponseAsync({ error: error.message });

@@ -63,7 +63,7 @@ async function runAnalysis(forceRefresh = false) {
         setError(`Erreur lors de la récupération des données: ${chrome.runtime.lastError?.message || 'Réponse invalide.'}`);
         return;
     }
-
+    
     // --- LOGIQUE DE CACHE ---
     const cacheKey = activeTab.url;
     if (!forceRefresh) {
@@ -103,11 +103,15 @@ async function runAnalysis(forceRefresh = false) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => runAnalysis());
+document.addEventListener('DOMContentLoaded', () => {
+    runAnalysis();
+});
 
 function populatePopup(data) {
     const mainContent = document.getElementById('main-content');
+    // Clear only analysis content
     mainContent.innerHTML = '';
+
 
     // --- En-tête (Titre et informations sur l'auteur) ---
     const titleSection = document.createElement('div');
