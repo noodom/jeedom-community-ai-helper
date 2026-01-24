@@ -18,15 +18,21 @@ Cette extension analyse les discussions, génère des résumés concis et vous a
     - [Génération de réponse complète](#1-génération-de-réponse-complète)
     - [Reformulation de texte](#2-reformulation-de-texte)
     - [Correction orthographique](#3-correction-orthographique)
+    - [Insertion de paragraphes](#4-insertion-de-paragraphes)
 6. [Concepts clés](#concepts-clés)
     - [Les Personas](#1-les-personas)
     - [Les Liens par Tag](#2-les-liens-par-tag)
-7. [Gestion avancée des configurations](#gestion-avancée-des-configurations)
+7. [Gestion des Réponses Rapides](#gestion-des-réponses-rapides)
+    - [Création et gestion des paragraphes](#1-création-et-gestion-des-paragraphes)
+    - [Paragraphes par défaut](#2-paragraphes-par-défaut)
+    - [Import et Export des paragraphes](#3-import-et-export-des-paragraphes)
+8. [Gestion avancée des configurations](#gestion-avancée-des-configurations)
     - [Gestion des Personas](#1-gestion-des-personas)
     - [Gestion des Liens par Tag](#2-gestion-des-liens-par-tag)
     - [Modèles d'IA par fonctionnalité](#3-modèles-dia-par-fonctionnalité)
-8. [Fonctionnalités supplémentaires](#fonctionnalités-supplémentaires)
-9. [Crédits](#crédits)
+    - [Visibilité des boutons d'action](#4-visibilité-des-boutons-daction)
+9. [Fonctionnalités supplémentaires](#fonctionnalités-supplémentaires)
+10. [Crédits](#crédits)
 
 ---
 
@@ -34,12 +40,14 @@ Cette extension analyse les discussions, génère des résumés concis et vous a
 
 - **Analyse de discussion** : Ouvrez un sujet du forum et obtenez un résumé en un clic (problématique, solution, résumé des échanges).
 - **Génération et reformulation de réponses** : Créez ou reformulez des réponses directement dans l'éditeur du forum en utilisant des styles prédéfinis (personas).
+- **Réponses pré-enregistrées** : Gérez une bibliothèque de paragraphes pour les insérer rapidement dans vos messages. Définissez des paragraphes de début et de fin par défaut pour automatiser la rédaction.
 - **Correction Orthographique et Grammaticale** : Utilisez l'API de LanguageTool pour corriger le texte de vos réponses.
 - **Analyse de Blocs de Code** : Obtenez des explications, des vérifications, des optimisations ou des commentaires pour n'importe quel bloc de code sur le forum.
 - **Configuration avancée** :
     - **Personas personnalisables** : Définissez le ton, le style et le modèle d'IA pour chaque type de réponse.
     - **Enrichissement contextuel** : Fournissez à l'IA des liens vers des documentations spécifiques grâce aux "Liens par Tag".
     - **Sélection de modèle d'IA** : Attribuez des modèles Gemini spécifiques (Flash, Pro) pour différentes tâches (résumé, explication de code, etc.).
+    - **Interface personnalisable** : Choisissez les boutons d'action à afficher dans la barre d'outils de l'éditeur.
 - **Interface intégrée et intuitive** : L'extension ajoute ses fonctionnalités directement dans l'interface du forum pour une expérience fluide et non intrusive.
 
 ---
@@ -116,7 +124,7 @@ L'extension utilise l'API de Google Gemini. Vous devez posséder votre propre cl
 
 ## Fonctionnalités de l'éditeur
 
-Lorsque vous ouvrez l'éditeur de réponse sur le forum, une nouvelle barre d'outils apparaît avec plusieurs fonctionnalités IA.
+Lorsque vous ouvrez l'éditeur de réponse sur le forum, une nouvelle barre d'outils apparaît avec plusieurs fonctionnalités IA. Vous pouvez choisir les boutons à afficher depuis la page d'options (voir la section [Visibilité des boutons d'action](#4-visibilité-des-boutons-daction)).
 
 ### 1. Génération de réponse complète
 
@@ -132,6 +140,11 @@ Lorsque vous ouvrez l'éditeur de réponse sur le forum, une nouvelle barre d'ou
 
 - **Icône** : !["Vérifier l'orthographe"](./images/spell-check-icon.svg)
 - **Fonctionnement** : Cliquez sur ce bouton pour lancer une correction orthographique et grammaticale du texte présent dans l'éditeur. La correction est effectuée via l'API externe de **LanguageTool**.
+
+### 4. Insertion de paragraphes
+
+- **Icône** : Une icône représentant un document ou une liste.
+- **Fonctionnement** : Cliquez sur ce bouton pour afficher la liste de vos paragraphes pré-enregistrés. Un clic sur un élément de la liste l'insérera directement dans l'éditeur, à l'emplacement de votre curseur.
 
 ---
 
@@ -162,6 +175,30 @@ Cette fonctionnalité puissante permet de donner à l'IA un contexte documentair
 
 ---
 
+## Gestion des Réponses Rapides
+
+Pour accélérer la rédaction de messages répétitifs, l'extension intègre un gestionnaire de paragraphes pré-enregistrés.
+
+### 1. Création et gestion des paragraphes
+Sur la page d'options, vous trouverez une section "Réponses pré-enregistrées" où vous pouvez :
+- **Ajouter** un nouveau paragraphe avec un titre (pour le reconnaître) et son contenu.
+- **Modifier** un paragraphe existant.
+- **Supprimer** un paragraphe dont vous n'avez plus besoin.
+
+### 2. Paragraphes par défaut
+Pour automatiser encore plus la création de vos messages, vous pouvez définir :
+- **Un paragraphe de début par défaut** : Ce texte (par exemple, "Bonjour,") sera automatiquement inséré à l'ouverture de l'éditeur de réponse.
+- **Un paragraphe de fin par défaut** : Ce texte sera inséré à la fin de votre message.
+
+Laissez le champ sur "Aucun" pour désactiver cette fonctionnalité.
+
+### 3. Import et Export des paragraphes
+Comme pour les Personas, vous pouvez facilement sauvegarder et partager vos listes de paragraphes :
+- **Export** : Crée un fichier `.json` contenant tous vos paragraphes.
+- **Import** : Charge une configuration de paragraphes depuis un fichier `.json`.
+
+---
+
 ## Gestion avancée des configurations
 
 La page d'options offre des fonctionnalités pour gérer et personnaliser finement votre expérience.
@@ -184,6 +221,9 @@ Pour un contrôle total, la section **"Modèles d'IA par Fonctionnalité"** vous
 - Reformulation de Texte
 
 Si "Défaut" est sélectionné, le modèle utilisé sera celui de la persona active, ou un modèle de base si aucune n'est active.
+
+### 4. Visibilité des boutons d'action
+Dans la section "Visibilité des boutons d'action", vous pouvez cocher ou décocher les fonctionnalités que vous souhaitez voir apparaître dans la barre d'outils de l'éditeur. Cela vous permet de garder une interface épurée avec uniquement les outils que vous utilisez.
 
 ---
 
