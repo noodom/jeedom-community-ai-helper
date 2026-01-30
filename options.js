@@ -1,3 +1,6 @@
+// Détection automatique de l'API disponible
+const devApi = typeof browser !== 'undefined' ? browser : chrome;
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- 0. Modèles d'IA disponibles ---
     const AVAILABLE_MODELS = [
@@ -9,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     // --- 1. Éléments du DOM ---
-    const manifest = chrome.runtime.getManifest();
+    const manifest = devApi.runtime.getManifest();
     document.getElementById('extension-version').textContent = manifest.version;
 
     // Paramètres globaux
@@ -371,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const personaData = {
-            id: currentEditingPersonaId || Date.now().toString(),
+            id: currentEditingPersonaId || Date.now().toString() + Math.random().toString(36).substring(2, 9),
             name: name,
             customPrompt: personaCustomPromptInput.value,
             prefix: personaPrefixInput.value,
@@ -420,13 +423,13 @@ document.addEventListener('DOMContentLoaded', () => {
         personaPreviewResult.style.color = '#333';
         personaPreviewResult.textContent = 'Génération de l\'aperçu...';
 
-        chrome.runtime.sendMessage({
+        devApi.runtime.sendMessage({
             type: 'testPersona',
             persona: currentPersona
         }, (response) => {
-            if (chrome.runtime.lastError || response.error) {
+            if (devApi.runtime.lastError || response.error) {
                 personaPreviewResult.style.color = 'red';
-                personaPreviewResult.textContent = `Erreur: ${response.error || chrome.runtime.lastError.message}`;
+                personaPreviewResult.textContent = `Erreur: ${response.error || devApi.runtime.lastError.message}`;
             } else {
                 personaPreviewResult.style.color = '#333';
                 personaPreviewResult.textContent = response.text;
@@ -470,8 +473,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Aucun lien par tag valide trouvé dans le fichier.');
                 }
 
-                // Pour simplifier, remplacer l'existant ou ajouter un nouveau.
-                // Une logique plus complexe pourrait demander à l'utilisateur ou fusionner par nom de tag.
+                // Pour simplifier, remplacer l\'existant ou ajouter un nouveau.
+                // Une logique plus complexe pourrait demander à l\'utilisateur ou fusionner par nom de tag.
                 validTagLinks.forEach(importedMapping => {
                     const existingIndex = tagLinkMappings.findIndex(m => m.tag === importedMapping.tag);
                     if (existingIndex > -1) {
@@ -484,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTagLinkList();
                 showStatusMessage('Liens par tag importés avec succès !');
             } catch (error) {
-                showStatusMessage(`Erreur lors de l'importation: ${error.message}`, true);
+                showStatusMessage(`Erreur lors de l\'importation: ${error.message}`, true);
             }
         };
         reader.readAsText(file);
@@ -684,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderParagraphsList();
                 showStatusMessage('Paragraphes importés avec succès !');
             } catch (error) {
-                showStatusMessage(`Erreur lors de l'importation: ${error.message}`, true);
+                showStatusMessage(`Erreur lors de l\'importation: ${error.message}`, true);
             }
         };
         reader.readAsText(file);
@@ -695,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateModelSelects() {
         const selects = document.querySelectorAll('.ai-model-select');
         selects.forEach(select => {
-            // Conserver l'option par défaut, effacer les autres
+            // Conserver l\'option par défaut, effacer les autres
             select.querySelectorAll('option:not([value="default"])').forEach(option => option.remove());
             AVAILABLE_MODELS.forEach(model => {
                 const option = document.createElement('option');
@@ -713,7 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'
         ];
 
-        chrome.storage.local.get(keysToLoad, (result) => {
+        devApi.storage.local.get(keysToLoad, (result) => {
             // Remplir les modèles
             populateModelSelects();
 
@@ -815,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 defaultClosingParagraphSelect.value = result.defaultClosingParagraphId;
             }
 
-            // Charger les tags connus pour l'autocomplétion
+            // Charger les tags connus pour l\'autocomplétion
             if (result.allKnownTags) {
                 allKnownTags = result.allKnownTags;
                 initAutocomplete(newTagNameInput, allKnownTags);
@@ -834,7 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Pré-remplir le champ de tag si un tag a été cliqué depuis le popup
             if (result.tagToPrepopulate) {
                 newTagNameInput.value = result.tagToPrepopulate;
-                chrome.storage.local.remove('tagToPrepopulate');
+                devApi.storage.local.remove('tagToPrepopulate');
             }
         });
     }
@@ -844,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatusMessage('Erreur: La clé API est requise.', true);
             return;
         }
-        chrome.storage.local.set({
+        devApi.storage.local.set({
             apiKey: apiKeyInput.value,
             enableIcons: enableIconsCheckbox.checked,
             personas: personas,
@@ -906,16 +909,16 @@ document.addEventListener('DOMContentLoaded', () => {
     testPersonaBtn.addEventListener('click', handleTestPersona);
 
     // Écouter les changements depuis d'autres parties de l'extension, comme le popup
-    chrome.storage.onChanged.addListener((changes, namespace) => {
+    devApi.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local' && changes.tagToPrepopulate) {
             const newValue = changes.tagToPrepopulate.newValue;
             if (newValue) {
                 newTagNameInput.value = newValue;
                 newTagNameInput.focus();
-                chrome.storage.local.remove('tagToPrepopulate');
+                devApi.storage.local.remove('tagToPrepopulate');
             }
         }
-        // Mettre à jour les tags pour l'autocomplétion s'ils changent
+        // Mettre à jour les tags pour l\'autocomplétion s\'ils changent
         if (namespace === 'local' && changes.allKnownTags) {
             allKnownTags = changes.allKnownTags.newValue || [];
             initAutocomplete(newTagNameInput, allKnownTags);

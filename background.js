@@ -1,10 +1,13 @@
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// Détection automatique de l'API disponible
+const devApi = typeof browser !== 'undefined' ? browser : chrome;
+
+devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let sendResponseAsync = sendResponse;
 
     if (request.type === 'generateReply') {
         (async () => {
             try {
-                const result = await chrome.storage.local.get(['apiKey', 'enableIcons', 'tagLinkMappings', 'personas', 'modelSettings']);
+                const result = await devApi.storage.local.get(['apiKey', 'enableIcons', 'tagLinkMappings', 'personas', 'modelSettings']);
                 const { apiKey, enableIcons, tagLinkMappings, personas, modelSettings } = result;
 
                 if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
@@ -74,7 +77,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const data = await response.json();
                 sendResponseAsync({ text: data.candidates[0].content.parts[0].text.trim() });
 
-                chrome.storage.local.set({ lastUsedPersonaId: request.personaId });
+                devApi.storage.local.set({ lastUsedPersonaId: request.personaId });
             } catch (error) {
                 sendResponseAsync({ error: error.message });
             }
@@ -85,7 +88,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'rephraseText') {
         (async () => {
             try {
-                const { apiKey, personas, modelSettings } = await chrome.storage.local.get(['apiKey', 'personas', 'modelSettings']);
+                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
                 if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
                 if (!personas || personas.length === 0) { throw new Error('Aucune persona n\'est configurée.'); }
 
@@ -140,7 +143,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'summarizeDiscussion') {
         (async () => {
             try {
-                const result = await chrome.storage.local.get(['apiKey', 'personas', 'modelSettings']);
+                const result = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
                 const { apiKey, personas, modelSettings } = result;
 
                 if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
@@ -169,7 +172,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                       "title": "${request.data.title}",
                       "problem": "Un résumé concis du problème initial.",
                       "solution": "Un résumé de la solution proposée.",
-                      "summary": "Un résumé neutre et factuel de l'ensemble des échanges, utilisant des listes à puces."
+                      "summary": "Un résumé neutre et factuel de l\'ensemble des échanges, utilisant des listes à puces."
                     }`;
 
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
@@ -186,7 +189,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 if (jsonMatch) {
                     sendResponseAsync({ summary: JSON.parse(jsonMatch[0]) });
                 } else {
-                    throw new Error("La réponse de l'IA n'était pas un JSON valide.");
+                    throw new Error("La réponse de l\'IA n\'était pas un JSON valide.");
                 }
             } catch (error) {
                 sendResponseAsync({ error: error.message });
@@ -198,7 +201,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'testPersona') {
         (async () => {
             try {
-                const { apiKey } = await chrome.storage.local.get('apiKey');
+                const { apiKey } = await devApi.storage.local.get('apiKey');
                 if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
 
                 const persona = request.persona;
@@ -207,7 +210,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     Tâche : Tu es un assistant IA. Tu dois répondre à une question de test en te basant sur la persona fournie.
 
                     Question de test :
-                    "Explique-moi simplement ce qu'est un scénario Jeedom."
+                    "Explique-moi simplement ce qu\'est un scénario Jeedom."
 
                     Instructions de la persona "${persona.name}" :
                     - Ton à adopter : ${persona.tone}
@@ -248,7 +251,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'explainCode') {
         (async () => {
             try {
-                const { apiKey, personas, modelSettings } = await chrome.storage.local.get(['apiKey', 'personas', 'modelSettings']);
+                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
                 if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
                 
                 let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
@@ -293,7 +296,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'verifyCode') {
         (async () => {
             try {
-                const { apiKey, personas, modelSettings } = await chrome.storage.local.get(['apiKey', 'personas', 'modelSettings']);
+                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
                 if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
                 
                 let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
@@ -340,7 +343,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'optimizeCode') {
         (async () => {
             try {
-                const { apiKey, personas, modelSettings } = await chrome.storage.local.get(['apiKey', 'personas', 'modelSettings']);
+                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
                 if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
                 
                 let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
@@ -387,7 +390,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'commentCode') {
         (async () => {
             try {
-                const { apiKey, personas, modelSettings } = await chrome.storage.local.get(['apiKey', 'personas', 'modelSettings']);
+                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
                 if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
                 
                 let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut

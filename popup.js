@@ -1,3 +1,6 @@
+// Détection automatique de l'API disponible
+const devApi = typeof browser !== 'undefined' ? browser : chrome;
+
 // --- Assistant pour le formatage du temps ---
 function formatTimeAgo(timestamp) {
     const now = new Date();
@@ -40,7 +43,7 @@ async function runAnalysis(forceRefresh = false) {
     footerBar.style.display = 'none';
     setLoading('Analyse de la discussion en cours...');
 
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabs = await devApi.tabs.query({ active: true, currentWindow: true });
     const activeTab = tabs[0];
 
     if (!activeTab || !activeTab.url || !activeTab.url.startsWith('https://community.jeedom.com/t/')) {
@@ -50,7 +53,7 @@ async function runAnalysis(forceRefresh = false) {
     
     // Ping le script de contenu pour s'assurer qu'il est prêt
     try {
-        const ping = await chrome.tabs.sendMessage(activeTab.id, { type: 'ping' });
+        const ping = await devApi.tabs.sendMessage(activeTab.id, { type: 'ping' });
         if (ping.status !== 'pong') throw new Error('Pong non reçu.');
     } catch (e) {
         setError(`Impossible de communiquer avec la page. Essayez d'actualiser l'onglet.`);
@@ -58,16 +61,16 @@ async function runAnalysis(forceRefresh = false) {
     }
 
     // Récupérer les données de la page (y compris le nombre de messages)
-    const dataResponse = await chrome.tabs.sendMessage(activeTab.id, { type: 'getDiscussionData' });
+    const dataResponse = await devApi.tabs.sendMessage(activeTab.id, { type: 'getDiscussionData' });
     if (!dataResponse || !dataResponse.title) {
-        setError(`Erreur lors de la récupération des données: ${chrome.runtime.lastError?.message || 'Réponse invalide.'}`);
+        setError(`Erreur lors de la récupération des données: ${devApi.runtime.lastError?.message || 'Réponse invalide.'}`);
         return;
     }
     
     // --- LOGIQUE DE CACHE ---
     const cacheKey = activeTab.url;
     if (!forceRefresh) {
-        const cachedResult = await chrome.storage.local.get(cacheKey);
+        const cachedResult = await devApi.storage.local.get(cacheKey);
         const cachedData = cachedResult[cacheKey];
 
         if (cachedData && cachedData.postCount === dataResponse.postCount) {
@@ -82,9 +85,9 @@ async function runAnalysis(forceRefresh = false) {
     
     // --- APPEL API (si cache manquant) ---
     setLoading("Données récupérées. Génération du résumé par l'IA...");
-    chrome.runtime.sendMessage({ type: 'summarizeDiscussion', data: dataResponse }, (summaryResponse) => {
-        if (chrome.runtime.lastError || summaryResponse.error) {
-            let errorMessage = summaryResponse.error || chrome.runtime.lastError.message;
+    devApi.runtime.sendMessage({ type: 'summarizeDiscussion', data: dataResponse }, (summaryResponse) => {
+        if (devApi.runtime.lastError || summaryResponse.error) {
+            let errorMessage = summaryResponse.error || devApi.runtime.lastError.message;
             if (String(errorMessage).includes('429')) {
                 errorMessage = 'Vous avez atteint la limite de requêtes pour l\'API Gemini. Veuillez patienter avant de réessayer.';
             }
@@ -97,7 +100,7 @@ async function runAnalysis(forceRefresh = false) {
 
         // Sauvegarder le nouveau résultat dans le cache
         const dataToCache = { ...finalData, timestamp: Date.now(), postCount: dataResponse.postCount };
-        chrome.storage.local.set({ [cacheKey]: dataToCache }, () => {
+        devApi.storage.local.set({ [cacheKey]: dataToCache }, () => {
             console.log("Nouveau résumé sauvegardé dans le cache.");
         });
     });
@@ -229,7 +232,7 @@ function populatePopup(data) {
         searchButton.style.display = 'flex'; // Utiliser flex pour centrer le SVG
         searchButton.onclick = () => {
             const query = encodeURIComponent(data.title);
-            chrome.tabs.create({ url: `https://community.jeedom.com/search?q=${query}` });
+            devApi.tabs.create({ url: `https://community.jeedom.com/search?q=${query}` });
         };
     }
 }
@@ -288,16 +291,16 @@ function showCopyFeedback(button, message, color = 'var(--jeedom-green)') {
 }
 
 function handleTagClick(tagName) {
-    chrome.storage.local.get(['tagLinkMappings'], (result) => {
+    devApi.storage.local.get(['tagLinkMappings'], (result) => {
         const tagLinkMappings = result.tagLinkMappings || [];
         const tagExists = tagLinkMappings.some(mapping => mapping.tag === tagName);
 
         if (!tagExists) {
-            chrome.storage.local.set({ tagToPrepopulate: tagName }, () => {
-                chrome.runtime.openOptionsPage();
+            devApi.storage.local.set({ tagToPrepopulate: tagName }, () => {
+                devApi.runtime.openOptionsPage();
             });
         } else {
-            chrome.runtime.openOptionsPage();
+            devApi.runtime.openOptionsPage();
         }
     });
 }

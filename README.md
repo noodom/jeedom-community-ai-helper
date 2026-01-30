@@ -54,17 +54,24 @@ Cette extension analyse les discussions, génère des résumés concis et vous a
 
 ## Installation
 
-L'extension doit être installée manuellement dans votre navigateur (basé sur Chromium comme Chrome, Edge, Brave, etc.).
+## Installation
 
-1. **Téléchargez le code** : Clonez ou téléchargez le contenu du dossier `jeedom-community-ai-helper` sur votre ordinateur.
-2. **Ouvrez les extensions** : Dans votre navigateur, accédez à la page des extensions.
-   - Pour Chrome : `chrome://extensions`
-   - Pour Edge : `edge://extensions`
-3. **Activez le mode développeur** : Cochez l'interrupteur "Mode développeur" (souvent en haut à droite).
-4. **Chargez l'extension** :
-   - Cliquez sur le bouton "Charger l'extension non empaquetée".
-   - Sélectionnez le dossier `jeedom-community-ai-helper` que vous avez téléchargé à l'étape 1.
-5. **Vérifiez l'installation** : L'icône de l'extension (un logo Jeedom) devrait apparaître dans votre barre d'outils.
+**Note Importante :** Pour assurer une compatibilité maximale avec les navigateurs Chromium (Chrome, Edge, Brave, etc.) et Firefox, cette extension utilise le `Manifest V2` avec des scripts d'arrière-plan classiques.
+
+1.  **Téléchargez le code** : Clonez ou téléchargez le contenu du dossier `jeedom-community-ai-helper` sur votre ordinateur.
+2.  **Ouvrez le gestionnaire d'extensions de votre navigateur** :
+    *   Pour Chrome/Edge/Brave : Tapez `chrome://extensions` ou `edge://extensions` dans la barre d'adresse.
+    *   Pour Firefox : Tapez `about:addons` dans la barre d'adresse et allez dans l'onglet "Extensions", puis cliquez sur l'icône en forme de roue dentée (⚙️) et choisissez "Déboguer les modules complémentaires" (vous devrez peut-être activer les outils de développement pour les extensions via `about:debugging#/runtime/this-firefox`).
+3.  **Activez le mode développeur** :
+    *   Pour Chrome/Edge/Brave : Cochez l'interrupteur "Mode développeur" (souvent en haut à droite).
+    *   Pour Firefox : Aucune activation spécifique n'est requise pour charger un module complémentaire temporaire.
+4.  **Chargez l'extension** :
+    *   Pour Chrome/Edge/Brave : Cliquez sur le bouton "Charger l'extension non empaquetée" (ou "Load unpacked").
+    *   Pour Firefox : Cliquez sur "Charger un module complémentaire temporaire..." (ou "Load Temporary Add-on...").
+    *   Dans les deux cas, sélectionnez le dossier `jeedom-community-ai-helper` que vous avez téléchargé à l'étape 1. Pour Firefox, vous pouvez sélectionner n'importe quel fichier à l'intérieur du dossier (par exemple, `manifest.json`).
+5.  **Vérifiez l'installation** : L'icône de l'extension (un logo Jeedom) devrait apparaître dans votre barre d'outils.
+
+**Note sur l'installation temporaire pour Firefox** : Les modules complémentaires temporaires sont désinstallés à la fermeture de Firefox. Pour une installation permanente, l'extension doit être signée et soumise à Mozilla Add-ons.
 
 ---
 

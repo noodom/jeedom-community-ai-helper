@@ -1,3 +1,6 @@
+// Détection automatique de l'API disponible
+const devApi = typeof browser !== 'undefined' ? browser : chrome;
+
 // État global pour conserver les personas, les paragraphes et la dernière persona utilisée
 let personas = [];
 let paragraphs = [];
@@ -19,7 +22,7 @@ const paragraphIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" vi
 
 
 // --- Logique de communication avec le script d'arrière-plan ---
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Répond au "ping" du popup pour confirmer que le script est actif
     if (request.type === 'ping') {
         sendResponse({ status: 'pong' });
@@ -50,10 +53,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         // Collecte les tags pour la fonctionnalité d'autocomplétion
         if (data.tags.length > 0) {
-            chrome.storage.local.get('allKnownTags', (result) => {
+            devApi.storage.local.get('allKnownTags', (result) => {
                 const knownTags = new Set(result.allKnownTags || []);
                 data.tags.forEach(tag => knownTags.add(tag));
-                chrome.storage.local.set({ allKnownTags: Array.from(knownTags).sort() });
+                devApi.storage.local.set({ allKnownTags: Array.from(knownTags).sort() });
             });
         }
 
@@ -89,7 +92,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Initialise l'extension en récupérant les données depuis le stockage
 function initialize() {
-    chrome.storage.local.get(['personas', 'lastUsedPersonaId', 'paragraphs', 'defaultOpeningParagraphId', 'defaultClosingParagraphId',
+    devApi.storage.local.get(['personas', 'lastUsedPersonaId', 'paragraphs', 'defaultOpeningParagraphId', 'defaultClosingParagraphId',
         'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'], (result) => {
         if (result.personas && result.personas.length > 0) {
             personas = result.personas;
@@ -327,14 +330,14 @@ async function handleRephraseClick(button, personaId) {
             throw new Error("Persona non trouvée.");
         }
 
-        chrome.runtime.sendMessage({
+        devApi.runtime.sendMessage({
             type: 'rephraseText',
             text: textToRephrase,
             personaId: persona.id
         }, (response) => {
-            if (chrome.runtime.lastError || response.error) {
-                console.error('Erreur de reformulation:', chrome.runtime.lastError || response.error);
-                button.title = `Erreur: ${response.error || chrome.runtime.lastError.message}`;
+            if (devApi.runtime.lastError || response.error) {
+                console.error('Erreur de reformulation:', devApi.runtime.lastError || response.error);
+                button.title = `Erreur: ${response.error || devApi.runtime.lastError.message}`;
             } else {
                 let finalText = response.text;
                 if (persona.prefix) {
@@ -345,7 +348,7 @@ async function handleRephraseClick(button, personaId) {
                 }
                 insertReply(finalText);
                 // Mettre à jour la dernière persona utilisée
-                chrome.storage.local.set({ lastUsedPersonaId: persona.id });
+                devApi.storage.local.set({ lastUsedPersonaId: persona.id });
             }
             button.innerHTML = rephraseIconSvg;
             button.disabled = false;
@@ -368,14 +371,14 @@ function handleAiButtonClick(button, personaId) {
     button.disabled = true;
     button.title = `Génération avec : ${persona.name}`;
 
-    chrome.storage.local.set({ lastUsedPersonaId: persona.id });
+    devApi.storage.local.set({ lastUsedPersonaId: persona.id });
 
     const posts = Array.from(document.querySelectorAll('.topic-post .cooked')).map(p => p.innerText).join('\n\n---\n\n');
     const tags = Array.from(document.querySelectorAll('.list-tags .discourse-tag')).map(t => t.innerText);
     const title = document.querySelector('a.fancy-title')?.innerText.trim();
     const categories = Array.from(document.querySelectorAll('.topic-category .badge-category__name')).map(c => c.innerText);
 
-    chrome.runtime.sendMessage({
+    devApi.runtime.sendMessage({
         type: 'generateReply',
         personaId: personaId,
         context: posts, tags, title, categories
@@ -446,7 +449,7 @@ function createCodeAiModal() {
         <div class="code-ai-modal-content">
             <div class="modal-header-buttons">
                 <button id="code-ai-modal-copy" class="code-ai-modal-button" title="Copier le contenu">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 </button>
                 <button id="code-ai-modal-close" class="code-ai-modal-button">&times;</button>
             </div>
@@ -484,10 +487,10 @@ function handleCodeActionClick(action, button, codeElement) {
 
     showCodeAiModal(`<div style="text-align: center;">${spinnerSvg} Analyse en cours...</div>`);
 
-    chrome.runtime.sendMessage({ type: action, code: code }, (response) => {
-        if (chrome.runtime.lastError || response.error) {
-            console.error(`Erreur pour l\'action ${action}:`, chrome.runtime.lastError || response.error);
-            showCodeAiModal(`<div style="color: red;">Erreur: ${response.error || chrome.runtime.lastError.message}</div>`);
+    devApi.runtime.sendMessage({ type: action, code: code }, (response) => {
+        if (devApi.runtime.lastError || response.error) {
+            console.error(`Erreur pour l\'action ${action}:`, devApi.runtime.lastError || response.error);
+            showCodeAiModal(`<div style="color: red;">Erreur: ${response.error || devApi.runtime.lastError.message}</div>`);
         } else {
             showCodeAiModal(response.text);
         }
@@ -709,7 +712,7 @@ style.textContent = `
         color: #888;
     }
     .code-ai-modal-close:hover,
-    .code-ai-modal-close:focus {
+    .dark-scheme .code-ai-modal-close:focus {
         color: #555;
         text-decoration: none;
     }

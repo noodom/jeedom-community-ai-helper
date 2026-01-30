@@ -11,7 +11,7 @@
     "https://generativelanguage.googleapis.com/"
   ],
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {
@@ -29,5 +29,10 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "jeedom-community-ai-helper@noodom.com"
+    }
   }
 }
