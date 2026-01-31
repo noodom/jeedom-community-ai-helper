@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Résumé Jeedom Community</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --jeedom-dark: #2e3d4c;
+            --jeedom-green: #94ca02;
+            --jeedom-bg: #f6f6f6;
+            --jeedom-text: #2c3e50;
+            --jeedom-border: #dddddd;
+        }
+
+        body {
+            width: 450px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--jeedom-bg);
+            color: var(--jeedom-text);
+        }
+
+        .header {
+            background-color: var(--jeedom-dark);
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header img {
+            height: 24px;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            margin: 0;
+            font-weight: 500;
+            flex-grow: 1;
+        }
+
+        .header .icon-button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header .icon-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            padding: 15px;
+        }
+
+        h2 {
+            font-size: 14px;
+            color: var(--jeedom-dark);
+            border-bottom: 2px solid var(--jeedom-green);
+            padding-bottom: 5px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tags-container span {
+            background-color: var(--jeedom-green);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-right: 5px;
+            display: inline-block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--jeedom-green);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        details {
+            border: 1px solid var(--jeedom-border);
+            border-radius: 4px;
+            margin-top: 10px;
+            background-color: #fff;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        summary {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 15px;
+            cursor: pointer;
+            outline: none;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+
+        summary:hover {
+            background-color: #f9f9f9;
+        }
+
+        summary::after {
+            content: '\f078'; /* FontAwesome angle-down replacement if not available */
+            content: '▼';
+            font-size: 10px;
+            color: var(--jeedom-dark);
+        }
+
+        details[open] summary::after {
+            content: '▲';
+        }
+
+        details .content {
+            padding: 15px;
+            border-top: 1px solid var(--jeedom-border);
+            background-color: #fdfdfd;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #444;
+        }
+
+        .summary-box {
+            background: white;
+            border: 1px solid var(--jeedom-border);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .summary-box ul {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+        }
+
+        .summary-box li {
+            margin-bottom: 5px;
+        }
+
+        .problem-text {
+            color: #d9534f; /* Red-ish for problem */
+            font-weight: 500;
+        }
+
+        .solution-text {
+            color: #5cb85c; /* Green-ish for solution */
+            font-weight: 500;
+        }
+
+        .footer {
+            background-color: #e9ecef;
+            padding: 8px 15px;
+            text-align: center;
+            font-size: 11px;
+            color: #6c757d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--jeedom-border);
+        }
+
+        .footer button {
+            background-color: var(--jeedom-dark);
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .footer button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="icons/icon48.png" alt="Jeedom AI">
+        <h1>Assistant Jeedom Community</h1>
+        <button id="search-topic" class="icon-button" title="Rechercher ce titre sur le forum">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+    </div>
+    <div class="container" id="main-content">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            Analyse de la discussion en cours...
+        </div>
+    </div>
+    <div class="footer" id="footer-bar" style="display: none;">
+        <span id="cache-info"></span>
+        <button id="refresh-summary" title="Forcer le rafraîchissement de l'analyse">Rafraîchir</button>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
