@@ -54,24 +54,35 @@ Cette extension analyse les discussions, génère des résumés concis et vous a
 
 ## Installation
 
-## Installation
+Cette extension peut être installée sur tous les navigateurs compatibles avec les extensions web, y compris Chromium (Google Chrome, Microsoft Edge, Brave) et Mozilla Firefox.
 
-**Note Importante :** Pour assurer une compatibilité maximale avec les navigateurs Chromium (Chrome, Edge, Brave, etc.) et Firefox, cette extension utilise le `Manifest V2` avec des scripts d'arrière-plan classiques.
+### Pour les navigateurs basés sur Chromium (Chrome, Edge, Brave, etc.)
 
 1.  **Téléchargez le code** : Clonez ou téléchargez le contenu du dossier `jeedom-community-ai-helper` sur votre ordinateur.
-2.  **Ouvrez le gestionnaire d'extensions de votre navigateur** :
-    *   Pour Chrome/Edge/Brave : Tapez `chrome://extensions` ou `edge://extensions` dans la barre d'adresse.
-    *   Pour Firefox : Tapez `about:addons` dans la barre d'adresse et allez dans l'onglet "Extensions", puis cliquez sur l'icône en forme de roue dentée (⚙️) et choisissez "Déboguer les modules complémentaires" (vous devrez peut-être activer les outils de développement pour les extensions via `about:debugging#/runtime/this-firefox`).
+2.  **Ouvrez le gestionnaire d'extensions** :
+    *   Tapez `chrome://extensions` (pour Chrome/Brave) ou `edge://extensions` (pour Edge) dans la barre d'adresse.
 3.  **Activez le mode développeur** :
-    *   Pour Chrome/Edge/Brave : Cochez l'interrupteur "Mode développeur" (souvent en haut à droite).
-    *   Pour Firefox : Aucune activation spécifique n'est requise pour charger un module complémentaire temporaire.
+    *   Cochez l'interrupteur "Mode développeur" (généralement en haut à droite).
 4.  **Chargez l'extension** :
-    *   Pour Chrome/Edge/Brave : Cliquez sur le bouton "Charger l'extension non empaquetée" (ou "Load unpacked").
-    *   Pour Firefox : Cliquez sur "Charger un module complémentaire temporaire..." (ou "Load Temporary Add-on...").
-    *   Dans les deux cas, sélectionnez le dossier `jeedom-community-ai-helper` que vous avez téléchargé à l'étape 1. Pour Firefox, vous pouvez sélectionner n'importe quel fichier à l'intérieur du dossier (par exemple, `manifest.json`).
+    *   Cliquez sur le bouton "Charger l'extension non empaquetée" (ou "Load unpacked").
+    *   Sélectionnez le dossier `jeedom-community-ai-helper` que vous avez téléchargé.
 5.  **Vérifiez l'installation** : L'icône de l'extension (un logo Jeedom) devrait apparaître dans votre barre d'outils.
+6.  **Épinglez l'extension à la barre d'outils (recommandé)** :
+    *   Cliquez sur l'icône en forme de pièce de puzzle (Extensions) à droite de votre barre d'adresse.
+    *   Trouvez "Jeedom Community AI Helper" dans la liste et cliquez sur l'icône en forme de punaise pour l'épingler à votre barre d'outils.
 
-**Note sur l'installation temporaire pour Firefox** : Les modules complémentaires temporaires sont désinstallés à la fermeture de Firefox. Pour une installation permanente, l'extension doit être signée et soumise à Mozilla Add-ons.
+### Pour Mozilla Firefox
+
+1.  **Téléchargez l'extension (.xpi)** :
+    *   Vous trouverez le fichier `jeedom-ai-helper-firefox.xpi` à la racine du projet.
+2.  **Installez l'extension** :
+    *   Ouvrez Firefox.
+    *   Faites glisser et déposez le fichier `.xpi` téléchargé (depuis la racine du projet) directement dans la fenêtre de Firefox.
+    *   Une fenêtre de confirmation apparaîtra. Cliquez sur "Ajouter".
+3.  **Vérifiez l'installation** : L'icône de l'extension sera ajoutée à votre barre d'outils.
+4.  **Épinglez l'extension à la barre d'outils (recommandé)** :
+    *   Faites un clic droit sur l'icône de l'extension dans votre barre d'outils.
+    *   Sélectionnez "Épingler à la barre d'outils" ou une option similaire.
 
 ---
 
@@ -124,7 +135,7 @@ L'extension utilise l'API de Google Gemini. Vous devez posséder votre propre cl
 ### 3. Rechercher le sujet sur le forum
 
 1.  **Ouvrez le popup** de l'extension sur un sujet du forum.
-2.  Dans l'en-tête, cliquez sur l'icône de recherche (![Rechercher](./images/search-icon.svg)).
+2.  Dans l'en-tête, cliquez sur l'icône de recherche (![Rechercher](jeedom-community-ai-helper/images/search-icon.svg)).
 3.  Un nouvel onglet s'ouvrira avec les résultats de recherche sur le forum pour le titre du sujet actuel.
 
 ---
@@ -135,17 +146,17 @@ Lorsque vous ouvrez l'éditeur de réponse sur le forum, une nouvelle barre d'ou
 
 ### 1. Génération de réponse complète
 
-- **Icône** : !["Persona"](./images/rephrase-icon.svg)
+- **Icône** : !["Persona"](jeedom-community-ai-helper/images/rephrase-icon.svg)
 - **Fonctionnement** : Cliquez sur ce bouton pour ouvrir un menu listant toutes vos personas. Sélectionnez-en une pour que l'IA analyse l'intégralité de la discussion et rédige une proposition de réponse complète.
 
 ### 2. Reformulation de texte
 
-- **Icône** : !["Reformuler"](./images/rephrase-icon.svg)
+- **Icône** : !["Reformuler"](jeedom-community-ai-helper/images/rephrase-icon.svg)
 - **Fonctionnement** : Écrivez ou collez du texte dans l'éditeur, puis cliquez sur ce bouton. Un menu de personas s'ouvrira pour vous permettre de choisir le style de reformulation souhaité. L'IA remplacera alors votre texte par la version reformulée.
 
 ### 3. Correction orthographique
 
-- **Icône** : !["Vérifier l'orthographe"](./images/spell-check-icon.svg)
+- **Icône** : !["Vérifier l'orthographe"](jeedom-community-ai-helper/images/spell-check-icon.svg)
 - **Fonctionnement** : Cliquez sur ce bouton pour lancer une correction orthographique et grammaticale du texte présent dans l'éditeur. La correction est effectuée via l'API externe de **LanguageTool**.
 
 ### 4. Insertion de paragraphes
@@ -246,6 +257,6 @@ Dans la section "Visibilité des boutons d'action", vous pouvez cocher ou décoc
 
 Développé par **Noodom**.
 
-[![Faire un don via PayPal](images/paypal.svg)](https://paypal.me/noodomfr)
+[![Faire un don via PayPal](jeedom-community-ai-helper/images/paypal.svg)](https://paypal.me/noodomfr)
 
 
