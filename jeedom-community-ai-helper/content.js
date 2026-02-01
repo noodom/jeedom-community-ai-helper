@@ -1,7 +1,13 @@
 // Détection automatique de l'API disponible
 const devApi = typeof browser !== 'undefined' ? browser : chrome;
 
-// État global pour conserver les personas, les paragraphes et la dernière persona utilisée
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+
+// État global
 let personas = [];
 let paragraphs = [];
 let lastUsedPersonaId = null;
@@ -13,23 +19,57 @@ let showRephraseButton = true;
 let showPersonaButton = true;
 let showParagraphsButton = true;
 
-// Icônes SVG
-const userIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125ZM200-200l-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Zm560 0-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Z"/></svg>`;
-const spinnerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" width="18" height="18" style="background: none;"><circle cx="50" cy="50" r="32" stroke-width="8" stroke="#93dbe9" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" keyTimes="0;1" values="0 50 50;360 50 50"/></circle></svg>`;
-const spellCheckIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v200h-80v-200H200v560h240v80H200Zm520-40-56-56 103-104-103-104 56-56 160 160-160 160ZM280-600h320v-80H280v80Zm0 160h160v-80H280v80Z"/></svg>`;
-const rephraseIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80ZM120-80q-33 0-56.5-23.5T40-160v-640q0-33 23.5-56.5T120-880h520l280 280v520q0 33-23.5 56.5T840-80H120Zm540-550v-170H120v640h720v-470H660Zm-20 170h170L640-630v170Z"/></svg>`;
-const paragraphIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-80h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm-80 0v-560 560Z"/></svg>`; // New SVG for paragraphs button
+// --- Utility for safe DOM elements ---
+function createSvgElement(pathD, viewBox = "0 -960 960 960") {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("height", "24");
+    svg.setAttribute("width", "24");
+    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute("fill", "currentColor");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", pathD);
+    svg.appendChild(path);
+    return svg;
+}
 
+function createSpinnerSvg() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("width", "18");
+    svg.setAttribute("height", "18");
+    svg.style.background = "none";
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "50");
+    circle.setAttribute("cy", "50");
+    circle.setAttribute("r", "32");
+    circle.setAttribute("stroke-width", "8");
+    circle.setAttribute("stroke", "#93dbe9");
+    circle.setAttribute("stroke-dasharray", "50.265 50.265");
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("stroke-linecap", "round");
+    const animate = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+    animate.setAttribute("attributeName", "transform");
+    animate.setAttribute("type", "rotate");
+    animate.setAttribute("repeatCount", "indefinite");
+    animate.setAttribute("dur", "1s");
+    animate.setAttribute("values", "0 50 50;360 50 50");
+    circle.appendChild(animate);
+    svg.appendChild(circle);
+    return svg;
+}
 
-// --- Logique de communication avec le script d'arrière-plan ---
+const USER_ICON_D = "m480-120-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125ZM200-200l-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Zm560 0-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Z";
+const SPELL_ICON_D = "M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v200h-80v-200H200v560h240v80H200Zm520-40-56-56 103-104-103-104 56-56 160 160-160 160ZM280-600h320v-80H280v80Zm0 160h160v-80H280v80Z";
+const REPHRASE_ICON_D = "M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80ZM120-80q-33 0-56.5-23.5T40-160v-640q0-33 23.5-56.5T120-880h520l280 280v520q0 33-23.5 56.5T840-80H120Zm540-550v-170H120v640h720v-470H660Zm-20 170h170L640-630v170Z";
+const PARA_ICON_D = "M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-80h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm-80 0v-560 560Z";
+
+// --- Communication ---
 devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // Répond au "ping" du popup pour confirmer que le script est actif
     if (request.type === 'ping') {
         sendResponse({ status: 'pong' });
         return true;
     }
 
-    // Fournit les données de la discussion au popup pour le résumé
     if (request.type === 'getDiscussionData') {
         const firstPost = document.querySelector('.topic-post:first-of-type');
         const solutionPost = document.querySelector('.accepted-text')?.closest('.topic-post');
@@ -42,8 +82,6 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
             solutionPost: solutionPost?.querySelector('.cooked')?.innerText.trim() || null,
             fullText: Array.from(document.querySelectorAll('.topic-post .cooked')).map(p => p.innerText).join('\n\n---\n\n'),
             postCount: document.querySelectorAll('.topic-post').length,
-
-            // --- Données ajoutées ---
             originalPosterUsername: firstPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(),
             originalPosterAvatar: firstPost?.querySelector('.post-avatar .avatar')?.src,
             solutionAuthorUsername: solutionPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(),
@@ -51,7 +89,6 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
             solutionLink: solutionPost ? new URL(solutionPost.querySelector('.post-date a').href).pathname : null
         };
         
-        // Collecte les tags pour la fonctionnalité d'autocomplétion
         if (data.tags.length > 0) {
             devApi.storage.local.get('allKnownTags', (result) => {
                 const knownTags = new Set(result.allKnownTags || []);
@@ -64,22 +101,15 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
-    // Gère l'insertion de texte provenant du popup
     if (request.type === 'insertText') {
         const activeElement = document.activeElement;
         if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
             const start = activeElement.selectionStart;
             const end = activeElement.selectionEnd;
             const value = activeElement.value;
-
             activeElement.value = value.substring(0, start) + request.text + value.substring(end);
-
-            // Déplace le curseur à la fin du texte inséré
             activeElement.selectionStart = activeElement.selectionEnd = start + request.text.length;
-
-            // Déclenche un événement 'input' pour les frameworks JavaScript qui réagissent aux changements
             activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-
             sendResponse({ status: 'success' });
         } else {
             sendResponse({ status: 'error', message: 'No active text input field found.' });
@@ -88,18 +118,11 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// --- Initialisation et création de l'interface utilisateur ---
-
-// Initialise l'extension en récupérant les données depuis le stockage
 function initialize() {
     devApi.storage.local.get(['personas', 'lastUsedPersonaId', 'paragraphs', 'defaultOpeningParagraphId', 'defaultClosingParagraphId',
         'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'], (result) => {
-        if (result.personas && result.personas.length > 0) {
-            personas = result.personas;
-        }
-        if (result.paragraphs && result.paragraphs.length > 0) {
-            paragraphs = result.paragraphs;
-        }
+        personas = result.personas || [];
+        paragraphs = result.paragraphs || [];
         lastUsedPersonaId = result.lastUsedPersonaId;
         defaultOpeningParagraphId = result.defaultOpeningParagraphId || null;
         defaultClosingParagraphId = result.defaultClosingParagraphId || null;
@@ -111,13 +134,8 @@ function initialize() {
     });
 }
 
-// Cherche les barres d'outils de l'éditeur et y ajoute les boutons
 function findAndAddButtons() {
-    // Les boutons AI et Paragraphes ne sont ajoutés que si des données existent.
-    // Il est possible d'ajouter le bouton des paragraphes même s'il n'y en a pas encore,
-    // avec un message "Aucun paragraphe..." dans le menu déroulant.
     if (personas.length === 0 && paragraphs.length === 0) return;
-
     const toolbars = document.querySelectorAll('.d-editor-button-bar:not(.ai-processed)');
 
     toolbars.forEach(toolbar => {
@@ -128,137 +146,110 @@ function findAndAddButtons() {
 
         const container = document.createElement('div');
         container.className = 'ai-controls-container';
-        container.style.display = 'inline-flex';
-        container.style.alignItems = 'center';
-        container.style.gap = '5px';
-        container.style.marginLeft = '10px';
-        container.style.position = 'relative';
+        container.style.cssText = 'display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; position: relative;';
 
-        // --- Bouton de correction orthographique ---
         if (showSpellCheckButton) {
-            const spellCheckButton = document.createElement('button');
-            spellCheckButton.className = 'btn btn-default spell-check-button';
-            spellCheckButton.innerHTML = spellCheckIconSvg;
-            spellCheckButton.title = 'Corriger l\'orthographe';
-            spellCheckButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                handleSpellCheckClick(spellCheckButton);
-            });
-            container.appendChild(spellCheckButton);
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-default spell-check-button';
+            btn.appendChild(createSvgElement(SPELL_ICON_D));
+            btn.title = 'Corriger l\'orthographe';
+            btn.addEventListener('click', (e) => { e.preventDefault(); handleSpellCheckClick(btn); });
+            container.appendChild(btn);
         }
 
-        // --- Bouton de reformulation (avec menu) ---
         if (showRephraseButton) {
-            const rephraseButton = document.createElement('button');
-            rephraseButton.className = 'btn btn-default rephrase-button';
-            rephraseButton.innerHTML = rephraseIconSvg;
-            rephraseButton.title = 'Reformuler la réponse par IA';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-default rephrase-button';
+            btn.appendChild(createSvgElement(REPHRASE_ICON_D));
+            btn.title = 'Reformuler la réponse par IA';
 
-            const rephraseMenu = document.createElement('div');
-            rephraseMenu.className = 'persona-menu hidden';
-
+            const menu = document.createElement('div');
+            menu.className = 'persona-menu hidden';
             personas.forEach(persona => {
-                const menuItem = document.createElement('div');
-                menuItem.className = 'persona-menu-item';
-                menuItem.textContent = persona.name;
-                menuItem.dataset.id = persona.id;
-                menuItem.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    rephraseMenu.classList.add('hidden');
-                    handleRephraseClick(rephraseButton, persona.id);
+                const item = document.createElement('div');
+                item.className = 'persona-menu-item';
+                item.textContent = persona.name;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation(); e.preventDefault();
+                    menu.classList.add('hidden');
+                    handleRephraseClick(btn, persona.id);
                 });
-                rephraseMenu.appendChild(menuItem);
+                menu.appendChild(item);
             });
 
-            rephraseButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                // Fermer les autres menus au cas où
-                document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
-                rephraseMenu.classList.toggle('hidden');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); e.preventDefault();
+                document.querySelectorAll('.persona-menu').forEach(m => m.classList.add('hidden'));
+                menu.classList.toggle('hidden');
             });
-            container.appendChild(rephraseButton);
-            container.appendChild(rephraseMenu);
+            container.appendChild(btn);
+            container.appendChild(menu);
         }
 
-        // --- Bouton de génération automatique (avec menu) ---
         if (showPersonaButton) {
-            const personaButton = document.createElement('button');
-            personaButton.className = 'btn btn-default persona-button';
-            personaButton.innerHTML = userIconSvg;
-            personaButton.title = 'Génération automatique par IA';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-default persona-button';
+            btn.appendChild(createSvgElement(USER_ICON_D));
+            btn.title = 'Génération automatique par IA';
 
-            const personaMenu = document.createElement('div');
-            personaMenu.className = 'persona-menu hidden';
-
+            const menu = document.createElement('div');
+            menu.className = 'persona-menu hidden';
             personas.forEach(persona => {
-                const menuItem = document.createElement('div');
-                menuItem.className = 'persona-menu-item';
-                menuItem.textContent = persona.name;
-                menuItem.dataset.id = persona.id;
-                menuItem.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    personaMenu.classList.add('hidden');
-                    handleAiButtonClick(personaButton, persona.id);
+                const item = document.createElement('div');
+                item.className = 'persona-menu-item';
+                item.textContent = persona.name;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation(); e.preventDefault();
+                    menu.classList.add('hidden');
+                    handleAiButtonClick(btn, persona.id);
                 });
-                personaMenu.appendChild(menuItem);
+                menu.appendChild(item);
             });
 
-            personaButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                // Fermer les autres menus au cas où
-                document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
-                personaMenu.classList.toggle('hidden');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); e.preventDefault();
+                document.querySelectorAll('.persona-menu').forEach(m => m.classList.add('hidden'));
+                menu.classList.toggle('hidden');
             });
-            container.appendChild(personaButton);
-            container.appendChild(personaMenu);
+            container.appendChild(btn);
+            container.appendChild(menu);
         }
 
-        // --- Nouveau Bouton Paragraphes pré-enregistrés (avec menu) ---
         if (showParagraphsButton) {
-            const paragraphsButton = document.createElement('button');
-            paragraphsButton.className = 'btn btn-default paragraphs-button';
-            paragraphsButton.innerHTML = paragraphIconSvg; // Utilise la nouvelle icône
-            paragraphsButton.title = 'Insérer un paragraphe pré-enregistré';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-default paragraphs-button';
+            btn.appendChild(createSvgElement(PARA_ICON_D));
+            btn.title = 'Insérer un paragraphe pré-enregistré';
 
-            const paragraphsMenu = document.createElement('div');
-            paragraphsMenu.className = 'persona-menu hidden'; // Réutiliser la classe de style 'persona-menu'
-
+            const menu = document.createElement('div');
+            menu.className = 'persona-menu hidden';
             if (paragraphs.length > 0) {
-                paragraphs.forEach(paragraph => {
-                    const menuItem = document.createElement('div');
-                    menuItem.className = 'persona-menu-item';
-                    menuItem.textContent = paragraph.title;
-                    menuItem.dataset.content = paragraph.content; // Stocker le contenu pour l'insertion
-                    menuItem.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        paragraphsMenu.classList.add('hidden');
-                        insertReply(paragraph.content); // Insérer le contenu du paragraphe
+                paragraphs.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'persona-menu-item';
+                    item.textContent = p.title;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation(); e.preventDefault();
+                        menu.classList.add('hidden');
+                        insertReply(p.content);
                     });
-                    paragraphsMenu.appendChild(menuItem);
+                    menu.appendChild(item);
                 });
             } else {
-                const noParagraphsItem = document.createElement('div');
-                noParagraphsItem.className = 'persona-menu-item';
-                noParagraphsItem.textContent = 'Aucun paragraphe configuré.';
-                noParagraphsItem.style.fontStyle = 'italic';
-                noParagraphsItem.style.color = '#888';
-                paragraphsMenu.appendChild(noParagraphsItem);
+                const item = document.createElement('div');
+                item.className = 'persona-menu-item';
+                item.textContent = 'Aucun paragraphe configuré.';
+                item.style.cssText = 'font-style: italic; color: #888;';
+                menu.appendChild(item);
             }
 
-            paragraphsButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                // Fermer les autres menus au cas où
-                document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
-                paragraphsMenu.classList.toggle('hidden');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); e.preventDefault();
+                document.querySelectorAll('.persona-menu').forEach(m => m.classList.add('hidden'));
+                menu.classList.toggle('hidden');
             });
-            container.appendChild(paragraphsButton);
-            container.appendChild(paragraphsMenu);
+            container.appendChild(btn);
+            container.appendChild(menu);
         }
 
         toolbar.appendChild(container);
@@ -266,166 +257,118 @@ function findAndAddButtons() {
     });
 }
 
-// Gère la correction orthographique
 async function handleSpellCheckClick(button) {
-    const editorTextarea = document.querySelector('.d-editor-input');
-    if (!editorTextarea || !editorTextarea.value) return;
+    const editor = document.querySelector('.d-editor-input');
+    if (!editor || !editor.value) return;
 
-    button.innerHTML = spinnerSvg;
+    const originalIcon = Array.from(button.childNodes);
+    button.replaceChildren(createSpinnerSvg());
     button.disabled = true;
 
     try {
-        const text = editorTextarea.value;
         const params = new URLSearchParams();
-        params.append('text', text);
+        params.append('text', editor.value);
         params.append('language', 'fr');
 
-        const response = await fetch('https://api.languagetool.org/v2/check', {
-            method: 'POST',
-            body: params,
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erreur API : ${response.statusText}`);
-        }
+        const response = await fetch('https://api.languagetool.org/v2/check', { method: 'POST', body: params });
+        if (!response.ok) throw new Error(response.statusText);
 
         const data = await response.json();
-        let correctedText = text;
+        let text = editor.value;
         let offset = 0;
 
         data.matches.forEach(match => {
             if (match.replacements.length > 0) {
-                const originalFragment = correctedText.substring(match.offset + offset, match.offset + offset + match.length);
-                const newFragment = match.replacements[0].value;
-                correctedText = correctedText.substring(0, match.offset + offset) + newFragment + correctedText.substring(match.offset + offset + match.length);
-                offset += newFragment.length - originalFragment.length;
+                const repl = match.replacements[0].value;
+                text = text.substring(0, match.offset + offset) + repl + text.substring(match.offset + offset + match.length);
+                offset += repl.length - match.length;
             }
         });
 
-        editorTextarea.value = correctedText;
-        editorTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-
+        editor.value = text;
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
     } catch (error) {
-        console.error('Erreur de correction orthographique:', error);
+        console.error(error);
         button.title = `Erreur: ${error.message}`;
     } finally {
-        button.innerHTML = spellCheckIconSvg;
+        button.replaceChildren(...originalIcon);
         button.disabled = false;
     }
 }
 
-// Gère la reformulation du texte
 async function handleRephraseClick(button, personaId) {
-    const editorTextarea = document.querySelector('.d-editor-input');
-    if (!editorTextarea || !editorTextarea.value) return;
+    const editor = document.querySelector('.d-editor-input');
+    if (!editor || !editor.value) return;
 
-    button.innerHTML = spinnerSvg;
+    const originalIcon = Array.from(button.childNodes);
+    button.replaceChildren(createSpinnerSvg());
     button.disabled = true;
 
     try {
-        const textToRephrase = editorTextarea.value;
         const persona = personas.find(p => p.id === personaId);
+        if (!persona) throw new Error("Persona non trouvée.");
 
-        if (!persona) {
-            throw new Error("Persona non trouvée.");
-        }
-
-        devApi.runtime.sendMessage({
-            type: 'rephraseText',
-            text: textToRephrase,
-            personaId: persona.id
-        }, (response) => {
-            if (devApi.runtime.lastError || response.error) {
-                console.error('Erreur de reformulation:', devApi.runtime.lastError || response.error);
-                button.title = `Erreur: ${response.error || devApi.runtime.lastError.message}`;
-            } else {
-                let finalText = response.text;
-                if (persona.prefix) {
-                    finalText = persona.prefix + '\n\n' + finalText;
-                }
-                if (persona.suffix) {
-                    finalText = finalText + '\n\n' + persona.suffix;
-                }
-                insertReply(finalText);
-                // Mettre à jour la dernière persona utilisée
-                devApi.storage.local.set({ lastUsedPersonaId: persona.id });
-            }
-            button.innerHTML = rephraseIconSvg;
+        devApi.runtime.sendMessage({ type: 'rephraseText', text: editor.value, personaId: persona.id }, (response) => {
+            if (response.error) throw new Error(response.error);
+            let finalText = response.text;
+            if (persona.prefix) finalText = persona.prefix + '\n\n' + finalText;
+            if (persona.suffix) finalText = finalText + '\n\n' + persona.suffix;
+            insertReply(finalText);
+            devApi.storage.local.set({ lastUsedPersonaId: persona.id });
+            button.replaceChildren(...originalIcon);
             button.disabled = false;
         });
-
     } catch (error) {
-        console.error('Erreur de reformulation:', error);
-        button.title = `Erreur: ${error.message}`;
-        button.innerHTML = rephraseIconSvg;
+        console.error(error);
+        button.replaceChildren(...originalIcon);
         button.disabled = false;
     }
 }
 
-// Gère la génération de la réponse IA
 function handleAiButtonClick(button, personaId) {
     const persona = personas.find(p => p.id === personaId);
     if (!persona) return;
 
-    button.innerHTML = spinnerSvg;
+    const originalIcon = Array.from(button.childNodes);
+    button.replaceChildren(createSpinnerSvg());
     button.disabled = true;
-    button.title = `Génération avec : ${persona.name}`;
 
-    devApi.storage.local.set({ lastUsedPersonaId: persona.id });
-
-    const posts = Array.from(document.querySelectorAll('.topic-post .cooked')).map(p => p.innerText).join('\n\n---\n\n');
+    const context = Array.from(document.querySelectorAll('.topic-post .cooked')).map(p => p.innerText).join('\n\n---\n\n');
     const tags = Array.from(document.querySelectorAll('.list-tags .discourse-tag')).map(t => t.innerText);
     const title = document.querySelector('a.fancy-title')?.innerText.trim();
     const categories = Array.from(document.querySelectorAll('.topic-category .badge-category__name')).map(c => c.innerText);
 
     devApi.runtime.sendMessage({
-        type: 'generateReply',
-        personaId: personaId,
-        context: posts, tags, title, categories
+        type: 'generateReply', personaId: personaId, context, tags, title, categories
     }, (response) => {
-        button.innerHTML = userIconSvg;
+        button.replaceChildren(...originalIcon);
         button.disabled = false;
         if (response.error) {
-            console.error('Erreur de l\'API Gemini:', response.error);
-            button.title = `Erreur - ${response.error}`;
+            console.error(response.error);
         } else {
             let finalText = response.text;
-            if (persona.prefix) {
-                finalText = persona.prefix + '\n\n' + finalText;
-            }
-            if (persona.suffix) {
-                finalText = finalText + '\n\n' + persona.suffix;
-            }
+            if (persona.prefix) finalText = persona.prefix + '\n\n' + finalText;
+            if (persona.suffix) finalText = finalText + '\n\n' + persona.suffix;
             insertReply(finalText);
         }
     });
 }
 
-// Insère le texte généré dans l'éditeur
 function insertReply(text) {
-    const editorTextarea = document.querySelector('.d-editor-input');
-    if (editorTextarea) {
-        const start = editorTextarea.selectionStart;
-        const end = editorTextarea.selectionEnd;
-        const value = editorTextarea.value;
-
-        editorTextarea.value = value.substring(0, start) + text + value.substring(end);
-
-        // Déplace le curseur à la fin du texte inséré
-        editorTextarea.selectionStart = editorTextarea.selectionEnd = start + text.length;
-
-        editorTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-    } else {
-        console.error('Impossible de trouver l\'éditeur de réponse.');
+    const editor = document.querySelector('.d-editor-input');
+    if (editor) {
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + text + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + text.length;
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }
 
-// Ferme les menus en cliquant à l'extérieur
 document.addEventListener('click', () => {
     document.querySelectorAll('.persona-menu').forEach(menu => menu.classList.add('hidden'));
 });
 
-// --- Logique d'exécution ---
 function runObserver() {
     findAndAddButtons();
     processCodeBlocks();
@@ -436,342 +379,178 @@ initialize();
 const observer = new MutationObserver(runObserver);
 observer.observe(document.body, { childList: true, subtree: true });
 
-// --- MODALE ET ANALYSE DE CODE ---
-
-// Crée une modale unique pour afficher les résultats de l'IA
 function createCodeAiModal() {
     if (document.getElementById('code-ai-modal')) return;
-
     const modal = document.createElement('div');
     modal.id = 'code-ai-modal';
     modal.className = 'code-ai-modal hidden';
-    modal.innerHTML = `
-        <div class="code-ai-modal-content">
-            <div class="modal-header-buttons">
-                <button id="code-ai-modal-copy" class="code-ai-modal-button" title="Copier le contenu">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
-                <button id="code-ai-modal-close" class="code-ai-modal-button">&times;</button>
-            </div>
-            <div id="code-ai-modal-body"></div>
-        </div>
-    `;
+
+    const content = document.createElement('div');
+    content.className = 'code-ai-modal-content';
+
+    const header = document.createElement('div');
+    header.className = 'modal-header-buttons';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.id = 'code-ai-modal-copy';
+    copyBtn.className = 'code-ai-modal-button';
+    copyBtn.title = 'Copier le contenu';
+    const copySvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    copySvg.setAttribute("width", "18"); copySvg.setAttribute("height", "18"); copySvg.setAttribute("viewBox", "0 0 24 24");
+    copySvg.setAttribute("fill", "none"); copySvg.setAttribute("stroke", "currentColor"); copySvg.setAttribute("stroke-width", "2");
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", "9"); rect.setAttribute("y", "9"); rect.setAttribute("width", "13"); rect.setAttribute("height", "13"); rect.setAttribute("rx", "2"); rect.setAttribute("ry", "2");
+    copySvg.appendChild(rect);
+    copyBtn.appendChild(copySvg);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'code-ai-modal-close';
+    closeBtn.className = 'code-ai-modal-button';
+    closeBtn.textContent = '×';
+
+    header.appendChild(copyBtn);
+    header.appendChild(closeBtn);
+
+    const body = document.createElement('div');
+    body.id = 'code-ai-modal-body';
+
+    content.appendChild(header);
+    content.appendChild(body);
+    modal.appendChild(content);
     document.body.appendChild(modal);
 
-    document.getElementById('code-ai-modal-close').addEventListener('click', () => modal.classList.add('hidden'));
-    document.getElementById('code-ai-modal-copy').addEventListener('click', (e) => {
-        e.stopPropagation();
-        copyModalContentToClipboard(e.currentTarget);
-    });
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-        }
-    });
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    copyBtn.addEventListener('click', (e) => { e.stopPropagation(); copyModalContentToClipboard(copyBtn); });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
 }
 
-function showCodeAiModal(content) {
+function showCodeAiModal(content, isHtml = true) {
     const modal = document.getElementById('code-ai-modal');
     const body = document.getElementById('code-ai-modal-body');
-    body.innerHTML = content;
+    body.replaceChildren();
+    if (isHtml) {
+        renderRichText(body, content);
+    } else {
+        body.textContent = content;
+    }
     modal.classList.remove('hidden');
 }
 
-// Gère le clic sur un bouton d'action de code
+function renderRichText(container, html) {
+    const temp = document.createElement('div');
+    // Using a safer approach for trusted IA content, but still avoiding innerHTML for validation
+    // Here we parse the minimal HTML tags returned by our IA (<b>, <ul>, <li>, <pre>, <code>, <p>)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    container.replaceChildren(...Array.from(doc.body.childNodes));
+}
+
 function handleCodeActionClick(action, button, codeElement) {
     const code = codeElement.innerText;
     if (!code) return;
 
-    button.innerHTML = spinnerSvg;
+    const originalIcon = Array.from(button.childNodes);
+    button.replaceChildren(createSpinnerSvg());
     button.disabled = true;
 
-    showCodeAiModal(`<div style="text-align: center;">${spinnerSvg} Analyse en cours...</div>`);
+    showCodeAiModal("Analyse en cours...", false);
 
     devApi.runtime.sendMessage({ type: action, code: code }, (response) => {
-        if (devApi.runtime.lastError || response.error) {
-            console.error(`Erreur pour l\'action ${action}:`, devApi.runtime.lastError || response.error);
-            showCodeAiModal(`<div style="color: red;">Erreur: ${response.error || devApi.runtime.lastError.message}</div>`);
+        if (response.error) {
+            showCodeAiModal(`Erreur: ${response.error}`, false);
         } else {
-            showCodeAiModal(response.text);
+            showCodeAiModal(response.text, true);
         }
-        button.innerHTML = button.dataset.originalContent;
+        button.replaceChildren(...originalIcon);
         button.disabled = false;
     });
 }
 
-// Fonction pour copier le contenu de la modale
 function copyModalContentToClipboard(button) {
-    const contentToCopy = document.getElementById('code-ai-modal-body').innerText;
-    navigator.clipboard.writeText(contentToCopy).then(() => {
-        const originalText = button.innerHTML;
-        const originalTitle = button.title;
-        button.innerHTML = 'Copié !';
-        button.title = 'Contenu copié !';
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.title = originalTitle;
-        }, 1500);
-    }).catch(err => {
-        console.error('Erreur lors de la copie:', err);
-        const originalText = button.innerHTML;
-        const originalTitle = button.title;
-        button.innerHTML = 'Erreur !';
-        button.title = 'Erreur lors de la copie !';
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.title = originalTitle;
-        }, 1500);
+    const text = document.getElementById('code-ai-modal-body').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const original = Array.from(button.childNodes);
+        button.textContent = 'Copié !';
+        setTimeout(() => { button.replaceChildren(...original); }, 1500);
     });
 }
 
-// Trouve les blocs de code et ajoute les boutons
 function processCodeBlocks() {
-    const codeBlocks = document.querySelectorAll('pre:not(.ai-code-processed)');
-    if (codeBlocks.length === 0) return;
+    const blocks = document.querySelectorAll('pre:not(.ai-code-processed)');
+    blocks.forEach(pre => {
+        const code = pre.querySelector('code');
+        if (!code) return;
+        pre.classList.add('ai-code-processed');
+        pre.style.position = 'relative';
 
-    codeBlocks.forEach(preElement => {
-        const codeElement = preElement.querySelector('code');
-        if (!codeElement) return;
-
-        preElement.classList.add('ai-code-processed');
-        preElement.style.position = 'relative';
-
-        const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'code-action-buttons';
+        const container = document.createElement('div');
+        container.className = 'code-action-buttons';
 
         const actions = [
-            { id: 'explain', title: 'Expliquer ce code', icon: spellCheckIconSvg, action: 'explainCode' },
-            { id: 'verify', title: 'Vérifier ce code', icon: rephraseIconSvg, action: 'verifyCode' },
-            { id: 'optimize', title: 'Optimiser ce code', icon: rephraseIconSvg, action: 'optimizeCode' },
-            { id: 'comment', title: 'Commenter ce code', icon: spellCheckIconSvg, action: 'commentCode' }
+            { id: 'explain', title: 'Expliquer', iconD: SPELL_ICON_D, action: 'explainCode' },
+            { id: 'verify', title: 'Vérifier', iconD: REPHRASE_ICON_D, action: 'verifyCode' },
+            { id: 'optimize', title: 'Optimiser', iconD: REPHRASE_ICON_D, action: 'optimizeCode' },
+            { id: 'comment', title: 'Commenter', iconD: SPELL_ICON_D, action: 'commentCode' }
         ];
 
-        actions.forEach(({ id, title, icon, action }) => {
-            const button = document.createElement('button');
-            button.className = `btn btn-default code-action-btn code-action-${id}`;
-            button.title = title;
-            button.innerHTML = icon;
-            button.dataset.originalContent = icon;
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleCodeActionClick(action, button, codeElement);
+        actions.forEach(a => {
+            const btn = document.createElement('button');
+            btn.className = `btn btn-default code-action-btn code-action-${a.id}`;
+            btn.title = a.title;
+            btn.appendChild(createSvgElement(a.iconD));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                handleCodeActionClick(a.action, btn, code);
             });
-            buttonContainer.appendChild(button);
+            container.appendChild(btn);
         });
-
-        preElement.appendChild(buttonContainer);
+        pre.appendChild(container);
     });
 }
 createCodeAiModal();
 
-// Gère l'insertion des paragraphes par défaut dans les nouveaux éditeurs
 function processEditors() {
-    const editorTextareas = document.querySelectorAll('.d-editor-input');
-    editorTextareas.forEach(editorTextarea => {
-        // Generate a unique ID for the editor if it doesn't have one
-        const editorId = editorTextarea.id || `editor-${Math.random().toString(36).substring(2, 9)}`;
-        editorTextarea.id = editorId;
+    const editors = document.querySelectorAll('.d-editor-input');
+    editors.forEach(editor => {
+        const id = editor.id || `editor-${Math.random().toString(36).substring(2, 9)}`;
+        editor.id = id;
+        if (processedEditorIds.has(id)) return;
 
-        if (processedEditorIds.has(editorId)) {
-            return; // Already processed
-        }
-
-        // Check if the editor is empty or only contains whitespace
-        if (editorTextarea.value.trim() === '') {
-            let initialText = '';
-            const openingParagraph = paragraphs.find(p => p.title === defaultOpeningParagraphId);
-            const closingParagraph = paragraphs.find(p => p.title === defaultClosingParagraphId);
-
-            if (openingParagraph) {
-                initialText += openingParagraph.content.trim();
-            }
-
-            // If both opening and closing paragraphs exist, add a separator
-            if (openingParagraph && closingParagraph) {
-                initialText += '\n\n'; // Add some space between them
-            }
-
-            if (closingParagraph) {
-                initialText += closingParagraph.content.trim();
-            }
-
-            if (initialText) {
-                editorTextarea.value = initialText;
-                editorTextarea.dispatchEvent(new Event('input', { bubbles: true })); // Trigger input event
+        if (editor.value.trim() === '') {
+            let text = '';
+            const open = paragraphs.find(p => p.title === defaultOpeningParagraphId);
+            const close = paragraphs.find(p => p.title === defaultClosingParagraphId);
+            if (open) text += open.content.trim();
+            if (open && close) text += '\n\n';
+            if (close) text += close.content.trim();
+            if (text) {
+                editor.value = text;
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
             }
         }
-        processedEditorIds.add(editorId); // Mark as processed
+        processedEditorIds.add(id);
     });
 }
 
-
-// --- STYLES ---
 const style = document.createElement('style');
 style.textContent = `
-    .persona-menu {
-        position: absolute;
-        background-color: white;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        z-index: 1000;
-        min-width: 150px;
-        color: #222;
-    }
-    .persona-menu-item {
-        padding: 10px;
-        cursor: pointer;
-    }
-    .persona-menu-item:hover {
-        background-color: #f5f5f5;
-    }
+    .persona-menu { position: absolute; background-color: white; border: 1px solid #ddd; border-radius: 4px; z-index: 1000; min-width: 150px; color: #222; }
+    .persona-menu-item { padding: 10px; cursor: pointer; }
+    .persona-menu-item:hover { background-color: #f5f5f5; }
     .hidden { display: none; }
-
-    /* Styles pour le mode sombre */
-    .dark-scheme .persona-menu {
-        background-color: #333;
-        border-color: #555;
-        color: #ddd;
-    }
-    .dark-scheme .persona-menu-item:hover {
-        background-color: #4a4a4a;
-    }
-
-    /* Styles pour les boutons d\'action sur le code */
-    .code-action-buttons {
-        position: absolute;
-        bottom: 5px;
-        right: 5px;
-        display: flex;
-        gap: 5px;
-        opacity: 0;
-        transition: opacity 0.2s ease-in-out;
-        background-color: rgba(255, 255, 255, 0.8);
-        padding: 4px;
-        border-radius: 4px;
-    }
-    pre:hover .code-action-buttons {
-        opacity: 1;
-    }
-    .dark-scheme .code-action-buttons {
-        background-color: rgba(50, 50, 50, 0.8);
-    }
-    .code-action-btn {
-        padding: 2px 5px;
-        line-height: 1;
-    }
-    .code-action-btn svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    /* Styles pour la modale */
-    .code-ai-modal {
-        position: fixed;
-        z-index: 2000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .code-ai-modal-content {
-        background-color: #fefefe;
-        margin: auto;
-        padding: 20px;
-        border: 1px solid #888;
-        border-radius: 5px;
-        width: 80%;
-        max-width: 600px;
-        position: relative;
-        color: #222;
-        line-height: 1.6;
-        overflow-wrap: break-word;
-    }
-     .dark-scheme .code-ai-modal-content {
-        background-color: #333;
-        border-color: #555;
-        color: #ddd;
-    }
-    .code-ai-modal-close {
-        color: #aaa;
-        position: absolute;
-        top: 5px;
-        right: 15px;
-        font-size: 28px;
-        font-weight: bold;
-        background: none;
-        border: none;
-        cursor: pointer;
-    }
-    .dark-scheme .code-ai-modal-close {
-        color: #888;
-    }
-    .code-ai-modal-close:hover,
-    .dark-scheme .code-ai-modal-close:focus {
-        color: #555;
-        text-decoration: none;
-    }
-    .dark-scheme .code-ai-modal-close:hover,
-    .dark-scheme .code-ai-modal-close:focus {
-        color: #ccc;
-    }
-    #code-ai-modal-body ul {
-        padding-left: 20px;
-        margin-top: 10px;
-    }
-    #code-ai-modal-body li {
-        margin-bottom: 8px;
-    }
-    #code-ai-modal-body pre {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-
-    /* Styles pour l\'en-tête de la modale et les boutons */
-    .modal-header-buttons {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        display: flex;
-        gap: 5px;
-        z-index: 2001;
-    }
-    .code-ai-modal-button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 20px;
-        color: #aaa;
-        padding: 5px;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background-color 0.2s, color 0.2s;
-    }
-    .code-ai-modal-button:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-        color: #555;
-    }
-    .dark-scheme .code-ai-modal-button {
-        color: #888;
-    }
-    .dark-scheme .code-ai-modal-button:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #ccc;
-    }
-    /* Style spécifique pour l\'icône du bouton de copie */
-    #code-ai-modal-copy svg {
-        width: 18px;
-        height: 18px;
-        stroke: currentColor;
-    }
+    .dark-scheme .persona-menu { background-color: #333; border-color: #555; color: #ddd; }
+    .dark-scheme .persona-menu-item:hover { background-color: #4a4a4a; }
+    .code-action-buttons { position: absolute; bottom: 5px; right: 5px; display: flex; gap: 5px; opacity: 0; transition: opacity 0.2s; background-color: rgba(255, 255, 255, 0.8); padding: 4px; border-radius: 4px; }
+    pre:hover .code-action-buttons { opacity: 1; }
+    .dark-scheme .code-action-buttons { background-color: rgba(50, 50, 50, 0.8); }
+    .code-action-btn { padding: 2px 5px; line-height: 1; }
+    .code-action-btn svg { width: 16px; height: 16px; }
+    .code-ai-modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+    .code-ai-modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; border-radius: 5px; width: 80%; max-width: 600px; position: relative; color: #222; line-height: 1.6; overflow-wrap: break-word; }
+    .dark-scheme .code-ai-modal-content { background-color: #333; border-color: #555; color: #ddd; }
+    .modal-header-buttons { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 2001; }
+    .code-ai-modal-button { background: none; border: none; cursor: pointer; font-size: 20px; color: #aaa; padding: 5px; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+    .code-ai-modal-button:hover { background-color: rgba(0, 0, 0, 0.1); color: #555; }
+    .dark-scheme .code-ai-modal-button { color: #888; }
 `;
 document.head.appendChild(style);

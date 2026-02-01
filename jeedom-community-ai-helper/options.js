@@ -115,9 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
             for (i = 0; i < arr.length; i++) {
                 if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
                     b = document.createElement("DIV");
-                    b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
-                    b.innerHTML += arr[i].substr(val.length);
-                    b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                    
+                    const strong = document.createElement("strong");
+                    strong.textContent = arr[i].substr(0, val.length);
+                    b.appendChild(strong);
+
+                    b.appendChild(document.createTextNode(arr[i].substr(val.length)));
+                    
+                    const inputHidden = document.createElement("input");
+                    inputHidden.type = "hidden";
+                    inputHidden.value = arr[i];
+                    b.appendChild(inputHidden);
+
                     b.addEventListener("click", function(e) {
                         inp.value = this.getElementsByTagName("input")[0].value;
                         closeAllLists();
@@ -251,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPersonaList() {
-        personaListDiv.innerHTML = '';
+        personaListDiv.replaceChildren();
         personas.forEach(persona => {
             const item = document.createElement('div');
             item.className = 'persona-list-item';
@@ -263,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             item.addEventListener('click', () => loadPersonaIntoEditor(persona.id));
 
-            // Événements de glisser-déposer
             item.addEventListener('dragstart', (e) => {
                 e.stopPropagation();
                 e.dataTransfer.setData('text/plain', persona.id);
@@ -275,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation();
                 if (e.dataTransfer.types.includes('text/plain')) {
                     const draggingId = e.dataTransfer.getData('text/plain');
-                    if (draggingId !== persona.id) { // Ne pas autoriser le dépôt sur soi-même
+                    if (draggingId !== persona.id) {
                         e.currentTarget.classList.add('drag-over');
                     }
                 }
@@ -437,7 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 5. Logique des Liens par Tag ---
-    // Fonctions d'export/import des Liens par Tag
     function exportTagLinks() {
         const dataStr = JSON.stringify(tagLinkMappings, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
@@ -486,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTagLinkList();
                 showStatusMessage('Liens par tag importés avec succès !');
             } catch (error) {
-                showStatusMessage(`Erreur lors de l\'importation: ${error.message}`, true);
+                showStatusMessage(`Erreur lors de l'importation: ${error.message}`, true);
             }
         };
         reader.readAsText(file);
@@ -494,16 +501,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTagLinkList() {
         tagLinkMappings.sort((a, b) => a.tag.localeCompare(b.tag));
-        tagLinksListDiv.innerHTML = '';
+        tagLinksListDiv.replaceChildren();
         tagLinkMappings.forEach((mapping, index) => {
             const item = document.createElement('div');
             item.className = 'tag-list-item';
-            item.innerHTML = `
-                <span class="tag-name">${mapping.tag}</span>
-                <span class="tag-links">${Array.isArray(mapping.links) ? mapping.links.map(link => `<a href="${link.url}" target="_blank">${link.description}</a>`).join(', ') : ''}</span>
-                <button class="edit-tag-btn" data-index="${index}">Modifier</button>
-                <button class="delete-tag-btn" data-index="${index}">Supprimer</button>
-            `;
+
+            const tagNameSpan = document.createElement('span');
+            tagNameSpan.className = 'tag-name';
+            tagNameSpan.textContent = mapping.tag;
+            item.appendChild(tagNameSpan);
+
+            const tagLinksSpan = document.createElement('span');
+            tagLinksSpan.className = 'tag-links';
+            if (Array.isArray(mapping.links)) {
+                mapping.links.forEach((link, lIndex) => {
+                    const a = document.createElement('a');
+                    a.href = link.url;
+                    a.target = '_blank';
+                    a.textContent = link.description;
+                    tagLinksSpan.appendChild(a);
+                    if (lIndex < mapping.links.length - 1) {
+                        tagLinksSpan.appendChild(document.createTextNode(', '));
+                    }
+                });
+            }
+            item.appendChild(tagLinksSpan);
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-tag-btn';
+            editButton.dataset.index = index;
+            editButton.textContent = 'Modifier';
+            item.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-tag-btn';
+            deleteButton.dataset.index = index;
+            deleteButton.textContent = 'Supprimer';
+            item.appendChild(deleteButton);
             tagLinksListDiv.appendChild(item);
         });
 
@@ -571,16 +605,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Logique des paragraphes pré-enregistrés ---
     function renderParagraphsList() {
         paragraphs.sort((a, b) => a.title.localeCompare(b.title));
-        paragraphsListDiv.innerHTML = '';
+        paragraphsListDiv.replaceChildren();
         paragraphs.forEach((paragraph, index) => {
             const item = document.createElement('div');
             item.className = 'paragraph-list-item';
-            item.innerHTML = `
-                <span class="paragraph-title">${paragraph.title}</span>
-                <span class="paragraph-content">${paragraph.content}</span>
-                <button class="edit-paragraph-btn" data-index="${index}">Modifier</button>
-                <button class="delete-paragraph-btn" data-index="${index}">Supprimer</button>
-            `;
+
+            const paragraphTitleSpan = document.createElement('span');
+            paragraphTitleSpan.className = 'paragraph-title';
+            paragraphTitleSpan.textContent = paragraph.title;
+            item.appendChild(paragraphTitleSpan);
+
+            const paragraphContentSpan = document.createElement('span');
+            paragraphContentSpan.className = 'paragraph-content';
+            paragraphContentSpan.textContent = paragraph.content;
+            item.appendChild(paragraphContentSpan);
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-paragraph-btn';
+            editButton.dataset.index = index;
+            editButton.textContent = 'Modifier';
+            item.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-paragraph-btn';
+            deleteButton.dataset.index = index;
+            deleteButton.textContent = 'Supprimer';
+            item.appendChild(deleteButton);
             paragraphsListDiv.appendChild(item);
         });
 
@@ -609,7 +659,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateDefaultParagraphSelects() {
         [defaultOpeningParagraphSelect, defaultClosingParagraphSelect].forEach(selectElement => {
-            selectElement.innerHTML = '<option value="">Aucun</option>';
+            selectElement.replaceChildren();
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Aucun';
+            selectElement.appendChild(defaultOption);
             paragraphs.forEach(paragraph => {
                 const option = document.createElement('option');
                 option.value = paragraph.title;
@@ -686,7 +740,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderParagraphsList();
                 showStatusMessage('Paragraphes importés avec succès !');
             } catch (error) {
-                showStatusMessage(`Erreur lors de l\'importation: ${error.message}`, true);
+                showStatusMessage(`Erreur lors de l'importation: ${error.message}`, true);
             }
         };
         reader.readAsText(file);
@@ -697,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateModelSelects() {
         const selects = document.querySelectorAll('.ai-model-select');
         selects.forEach(select => {
-            // Conserver l'option par défaut, effacer les autres
             select.querySelectorAll('option:not([value="default"])').forEach(option => option.remove());
             AVAILABLE_MODELS.forEach(model => {
                 const option = document.createElement('option');
@@ -716,14 +769,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
 
         devApi.storage.local.get(keysToLoad, (result) => {
-            // Remplir les modèles
             populateModelSelects();
 
-            // Chargement des paramètres globaux
             if (result.apiKey) apiKeyInput.value = result.apiKey;
-            enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true; // Default to true
+            enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true;
 
-            // Chargement des paramètres de visibilité des boutons
             showSpellCheckButtonCheckbox.checked = result.showSpellCheckButton !== undefined ? result.showSpellCheckButton : true;
             showRephraseButtonCheckbox.checked = result.showRephraseButton !== undefined ? result.showRephraseButton : true;
             showPersonaButtonCheckbox.checked = result.showPersonaButton !== undefined ? result.showPersonaButton : true;

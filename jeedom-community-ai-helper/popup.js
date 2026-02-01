@@ -20,12 +20,30 @@ function formatTimeAgo(timestamp) {
 
 function setLoading(message) {
     const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = `<div class="loading"><div class="loading-spinner"></div>${message}</div>`;
+    mainContent.replaceChildren(); // Safe alternative to innerHTML = ''
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading';
+
+    const spinnerDiv = document.createElement('div');
+    spinnerDiv.className = 'loading-spinner';
+    loadingDiv.appendChild(spinnerDiv);
+
+    const messageNode = document.createTextNode(message);
+    loadingDiv.appendChild(messageNode);
+
+    mainContent.appendChild(loadingDiv);
 }
 
 function setError(message) {
     const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = `<div class="loading">${message}</div>`;
+    mainContent.replaceChildren();
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'loading';
+    errorDiv.textContent = message;
+
+    mainContent.appendChild(errorDiv);
     document.getElementById('search-topic').style.display = 'none';
 }
 
@@ -47,7 +65,6 @@ async function runAnalysis(forceRefresh = false) {
         return;
     }
     
-    // Ping le script de contenu pour s'assurer qu'il est prêt
     try {
         const ping = await devApi.tabs.sendMessage(activeTab.id, { type: 'ping' });
         if (ping.status !== 'pong') throw new Error('Pong non reçu.');
@@ -56,14 +73,12 @@ async function runAnalysis(forceRefresh = false) {
         return;
     }
 
-    // Récupérer les données de la page (y compris le nombre de messages)
     const dataResponse = await devApi.tabs.sendMessage(activeTab.id, { type: 'getDiscussionData' });
     if (!dataResponse || !dataResponse.title) {
         setError(`Erreur lors de la récupération des données: ${devApi.runtime.lastError?.message || 'Réponse invalide.'}`);
         return;
     }
     
-    // --- LOGIQUE DE CACHE ---
     const cacheKey = activeTab.url;
     if (!forceRefresh) {
         const cachedResult = await devApi.storage.local.get(cacheKey);
@@ -79,7 +94,6 @@ async function runAnalysis(forceRefresh = false) {
         }
     }
     
-    // --- APPEL API (si cache manquant) ---
     setLoading("Données récupérées. Génération du résumé par l'IA...");
     devApi.runtime.sendMessage({ type: 'summarizeDiscussion', data: dataResponse }, (summaryResponse) => {
         if (devApi.runtime.lastError || summaryResponse.error) {
@@ -95,9 +109,7 @@ async function runAnalysis(forceRefresh = false) {
         populatePopup(finalData);
 
         const dataToCache = { ...finalData, timestamp: Date.now(), postCount: dataResponse.postCount };
-        devApi.storage.local.set({ [cacheKey]: dataToCache }, () => {
-            console.log("Nouveau résumé sauvegardé dans le cache.");
-        });
+        devApi.storage.local.set({ [cacheKey]: dataToCache });
     });
 }
 
@@ -107,10 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function populatePopup(data) {
     const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = '';
+    mainContent.replaceChildren();
 
-
-    // --- En-tête (Titre et informations sur l'auteur) ---
     const titleSection = document.createElement('div');
     titleSection.style.marginBottom = '15px';
 
@@ -120,13 +130,16 @@ function populatePopup(data) {
     titleEl.textContent = data.title;
 
     if (data.solutionLink) {
-        titleEl.innerHTML += ' <span title="Résolu" style="color:var(--jeedom-green); font-size: 18px;">✔</span>';
+        const solvedSpan = document.createElement('span');
+        solvedSpan.title = 'Résolu';
+        solvedSpan.style.color = 'var(--jeedom-green)';
+        solvedSpan.style.fontSize = '18px';
+        solvedSpan.textContent = ' ✔';
+        titleEl.appendChild(solvedSpan);
     }
     titleSection.appendChild(titleEl);
-
     mainContent.appendChild(titleSection);
 
-    // --- Catégories et Tags ---
     const tagsWrapper = document.createElement('div');
     tagsWrapper.style.marginBottom = '15px';
 
@@ -136,7 +149,7 @@ function populatePopup(data) {
         data.categories.forEach(cat => {
             const catEl = document.createElement('span');
             catEl.textContent = cat;
-            catEl.style.backgroundColor = '#2e3d4c'; // Thème sombre de Jeedom pour les catégories
+            catEl.style.backgroundColor = '#2e3d4c';
             categoriesContainer.appendChild(catEl);
         });
         tagsWrapper.appendChild(categoriesContainer);
@@ -157,7 +170,6 @@ function populatePopup(data) {
     }
     mainContent.appendChild(tagsWrapper);
 
-    // --- Sections dépliables ---
     const createCollapsibleSection = (title, content, isOpen = false, linkInfo = null, customClass = '') => {
         if (!content) return null;
 
@@ -165,16 +177,41 @@ function populatePopup(data) {
         details.open = isOpen;
 
         const summaryEl = document.createElement('summary');
-        summaryEl.innerHTML = `<span>${title}</span> <button class="copy-button" title="Copier le résumé" style="background: none; border: none; cursor: pointer; color: var(--jeedom-text-color); margin-left: 5px; vertical-align: middle;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`;
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = title;
+        summaryEl.appendChild(titleSpan);
+
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.title = 'Copier le résumé';
+        copyButton.style.cssText = 'background: none; border: none; cursor: pointer; color: var(--jeedom-text-color); margin-left: 5px; vertical-align: middle;';
+
+        // Use SVG element directly
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", "12");
+        svg.setAttribute("height", "12");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "2");
+        svg.setAttribute("stroke-linecap", "round");
+        svg.setAttribute("stroke-linejoin", "round");
+
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", "9"); rect.setAttribute("y", "9"); rect.setAttribute("width", "13"); rect.setAttribute("height", "13"); rect.setAttribute("rx", "2"); rect.setAttribute("ry", "2");
+        svg.appendChild(rect);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1");
+        svg.appendChild(path);
+
+        copyButton.appendChild(svg);
+        summaryEl.appendChild(copyButton);
         details.appendChild(summaryEl);
 
-        const copyButton = summaryEl.querySelector('.copy-button');
-        if (copyButton) {
-            copyButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                copyToClipboard(content, copyButton);
-            });
-        }
+        copyButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            copyToClipboard(content, copyButton);
+        });
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'content ' + customClass;
@@ -185,12 +222,23 @@ function populatePopup(data) {
             authorDiv.style.marginBottom = '10px';
             authorDiv.style.fontSize = '12px';
             const authorPrefix = title === 'SOLUTION RETENUE' ? 'Solution par' : 'par';
-            authorDiv.innerHTML = `${authorPrefix} <img src="${linkInfo.avatar}" class="avatar" style="width:16px; height:16px; border-radius:50%; vertical-align:middle;"> <b>${linkInfo.author}</b>`;
+            
+            authorDiv.appendChild(document.createTextNode(`${authorPrefix} `));
+
+            const avatarImg = document.createElement('img');
+            avatarImg.src = linkInfo.avatar;
+            avatarImg.className = 'avatar';
+            avatarImg.style.cssText = 'width:16px; height:16px; border-radius:50%; vertical-align:middle;';
+            authorDiv.appendChild(avatarImg);
+
+            const authorNameBold = document.createElement('b');
+            authorNameBold.textContent = ` ${linkInfo.author}`;
+            authorDiv.appendChild(authorNameBold);
             contentDiv.appendChild(authorDiv);
         }
 
         const textNode = document.createElement('div');
-        textNode.innerHTML = formatSummaryContent(content);
+        renderFormattedText(textNode, content);
         contentDiv.appendChild(textNode);
 
         if (linkInfo && linkInfo.url) {
@@ -221,7 +269,7 @@ function populatePopup(data) {
 
     const searchButton = document.getElementById('search-topic');
     if (searchButton && data.title) {
-        searchButton.style.display = 'flex'; // Utiliser flex pour centrer le SVG
+        searchButton.style.display = 'flex';
         searchButton.onclick = () => {
             const query = encodeURIComponent(data.title);
             devApi.tabs.create({ url: `https://community.jeedom.com/search?q=${query}` });
@@ -229,8 +277,9 @@ function populatePopup(data) {
     }
 }
 
-function formatSummaryContent(content) {
-    if (!content) return '';
+function renderFormattedText(container, content) {
+    container.replaceChildren();
+    if (!content) return;
 
     let textContent = content;
     if (Array.isArray(textContent)) {
@@ -239,11 +288,28 @@ function formatSummaryContent(content) {
         textContent = String(textContent);
     }
 
-    return textContent
-        .replace(/\n/g, '<br>')
-        .replace(/- (.*?)(<br>|$)/g, '<li>$1</li>')
-        .replace(/(<li>.*?<\/li>)/g, '<ul>$1</ul>')
-        .replace(/<\/ul><ul>/g, '');
+    const lines = textContent.split('\n');
+    let currentList = null;
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('- ')) {
+            if (!currentList) {
+                currentList = document.createElement('ul');
+                container.appendChild(currentList);
+            }
+            const li = document.createElement('li');
+            li.textContent = trimmed.substring(2);
+            currentList.appendChild(li);
+        } else if (trimmed !== '') {
+            currentList = null;
+            const p = document.createElement('p');
+            p.textContent = trimmed;
+            container.appendChild(p);
+        } else {
+            currentList = null;
+        }
+    });
 }
 
 function copyToClipboard(text, button) {
@@ -266,16 +332,16 @@ function copyToClipboard(text, button) {
 }
 
 function showCopyFeedback(button, message, color = 'var(--jeedom-green)') {
-    const originalContent = button.innerHTML;
+    const originalContent = Array.from(button.childNodes);
     const originalTitle = button.title;
     const originalColor = button.style.color;
 
-    button.innerHTML = message;
+    button.replaceChildren(document.createTextNode(message));
     button.title = message;
     button.style.color = color;
 
     setTimeout(() => {
-        button.innerHTML = originalContent;
+        button.replaceChildren(...originalContent);
         button.title = originalTitle;
         button.style.color = originalColor;
     }, 1500);

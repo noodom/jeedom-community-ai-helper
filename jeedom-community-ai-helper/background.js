@@ -18,7 +18,7 @@ function getPersona(personas, personaId) {
 }
 
 function getModel(modelSettings, type, persona, personas) {
-    let model = 'gemini-1.5-flash-latest';
+    let model = 'gemini-2.5-flash-lite';
     if (modelSettings && modelSettings[type] && modelSettings[type] !== 'default') {
         model = modelSettings[type];
     } else if (persona && persona.model) {
@@ -154,7 +154,7 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         Règle : UNIQUEMENT le texte de réponse.
                         Réponse :`;
 
-                    let text = await callGemini(persona.model || 'gemini-1.5-flash-latest', apiKey, prompt);
+                    let text = await callGemini(persona.model || 'gemini-2.5-flash-lite', apiKey, prompt);
                     text = text.trim();
                     if (persona.prefix) text = persona.prefix + '\n\n' + text;
                     if (persona.suffix) text = text + '\n\n' + persona.suffix;
@@ -186,7 +186,13 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
             }
         } catch (error) {
-            sendResponseAsync({ error: error.message });
+            let errorMessage = error.message;
+            if (errorMessage.includes('statut : 429')) {
+                errorMessage = 'Vous avez atteint la limite de requêtes pour l\'API Gemini. Veuillez patienter avant de réessayer ou vérifier votre quota sur Google AI Studio.';
+            } else if (errorMessage.includes('statut : 404')) {
+                errorMessage = 'Le modèle d\'IA sélectionné n\'est pas disponible ou son nom est incorrect. Veuillez vérifier les modèles disponibles ou votre clé API.';
+            }
+            sendResponseAsync({ error: errorMessage });
         }
     };
 

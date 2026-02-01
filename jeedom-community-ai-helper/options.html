@@ -406,14 +406,8 @@
                 </div>
                 <div class="form-group">
                     <label for="persona-model">Modèle d'IA</label>
-                    <select id="persona-model">
-                        <option value="gemini-1.5-flash">1.5 Flash</option>
-                        <option value="gemini-1.5-pro">1.5 Pro</option>
-                        <option value="gemini-2.0-flash">2.0 Flash</option>
-                        <option value="gemini-2.0-pro">2.0 Pro</option>
-                        <option value="gemini-2.5-flash">2.5 Flash</option>
-                        <option value="gemini-2.5-pro">2.5 Pro</option>
-                        <option value="gemini-2.5-flash-lite">2.5 Flash Lite</option>
+                    <select id="persona-model" class="ai-model-select">
+                        <!-- Options will be dynamically populated by JS -->
                     </select>
                 </div>
             </div>
@@ -461,11 +455,10 @@
     </div>
     <hr>
     <h2>Modèles d'IA par Fonctionnalité</h2>
-    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Choisissez un modèle d'IA spécifique pour chaque
-        type de tâche. Si "Défaut (Persona/Fallback)" est sélectionné, l'extension utilisera le modèle de la persona
-        active ou, si aucune n'est active, un modèle par défaut (généralement 'gemini-1.5-flash-latest' ou
-        'gemini-2.5-flash-lite' pour le résumé).</p>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Choisissez un modèle d'IA spécifique pour chaque
+            type de tâche. Si "Défaut (Persona/Fallback)" est sélectionné, l'extension utilisera le modèle de la persona
+            active ou, si aucune n'est active, un modèle par défaut (généralement 'gemini-2.5-flash-lite' pour le
+            résumé).</p>    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
         <div class="form-group">
             <label for="model-summarizeDiscussion">Résumé de Discussion</label>
             <select id="model-summarizeDiscussion" class="ai-model-select">
