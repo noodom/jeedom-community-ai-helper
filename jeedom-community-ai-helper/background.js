@@ -1,434 +1,195 @@
-// Détection automatique de l'API disponible
 const devApi = typeof browser !== 'undefined' ? browser : chrome;
+
+/**
+ * Fonctions utilitaires mutualisées
+ */
+
+async function getSettings(keys = ['apiKey', 'personas', 'modelSettings']) {
+    const result = await devApi.storage.local.get(keys);
+    if (!result.apiKey) throw new Error(`La clé API Gemini n'est pas configurée.`);
+    return result;
+}
+
+function getPersona(personas, personaId) {
+    if (!personas || personas.length === 0) throw new Error('Aucune persona n\'est configurée.');
+    const persona = personas.find(p => p.id === personaId);
+    if (!persona) throw new Error(`Persona avec l'ID ${personaId} non trouvée.`);
+    return persona;
+}
+
+function getModel(modelSettings, type, persona, personas) {
+    let model = 'gemini-1.5-flash-latest';
+    if (modelSettings && modelSettings[type] && modelSettings[type] !== 'default') {
+        model = modelSettings[type];
+    } else if (persona && persona.model) {
+        model = persona.model;
+    } else if (personas && personas.length > 0) {
+        model = personas[0].model;
+    }
+    if (!model) throw new Error(`Aucun modèle d'IA n'est configuré.`);
+    return model;
+}
+
+async function callGemini(model, apiKey, prompt) {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+
+    if (!response.ok) throw new Error(`Erreur HTTP ! statut : ${response.status}`);
+    const data = await response.json();
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error(`Réponse invalide de l'IA.`);
+    }
+    return data.candidates[0].content.parts[0].text;
+}
+
+function cleanHtml(text) {
+    return text.replace(/```html|```/g, '').trim();
+}
+
+/**
+ * Gestion des messages
+ */
 
 devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let sendResponseAsync = sendResponse;
 
-    if (request.type === 'generateReply') {
-        (async () => {
-            try {
-                const result = await devApi.storage.local.get(['apiKey', 'enableIcons', 'tagLinkMappings', 'personas', 'modelSettings']);
-                const { apiKey, enableIcons, tagLinkMappings, personas, modelSettings } = result;
+    const handleAction = async () => {
+        try {
+            switch (request.type) {
+                case 'generateReply': {
+                    const { apiKey, enableIcons, tagLinkMappings, personas, modelSettings } = await getSettings(['apiKey', 'enableIcons', 'tagLinkMappings', 'personas', 'modelSettings']);
+                    const persona = getPersona(personas, request.personaId);
+                    const model = getModel(modelSettings, 'generateReply', persona, personas);
 
-                if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
-                if (!personas || personas.length === 0) { throw new Error('Aucune persona n\'est configurée.'); }
-
-                const persona = personas.find(p => p.id === request.personaId);
-                if (!persona) { throw new Error(`Persona avec l\'ID ${request.personaId} non trouvée.`); }
-
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.generateReply && modelSettings.generateReply !== 'default') {
-                    model = modelSettings.generateReply;
-                } else {
-                    model = persona.model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-
-                // --- Construction du contexte de la documentation ---
-                let documentationContext = '';
-                if (tagLinkMappings && Array.isArray(tagLinkMappings) && request.tags) {
-                    const relevantLinks = [];
-                    tagLinkMappings.forEach(mapping => {
-                        if (request.tags.includes(mapping.tag)) {
-                            mapping.links.forEach(link => {
-                                relevantLinks.push(`- ${link.description}: ${link.url}`);
-                            });
+                    let documentationContext = '';
+                    if (tagLinkMappings && Array.isArray(tagLinkMappings) && request.tags) {
+                        const relevantLinks = [];
+                        tagLinkMappings.forEach(mapping => {
+                            if (request.tags.includes(mapping.tag)) {
+                                mapping.links.forEach(link => {
+                                    relevantLinks.push(`- ${link.description}: ${link.url}`);
+                                });
+                            }
+                        });
+                        if (relevantLinks.length > 0) {
+                            documentationContext = `Considère les ressources documentaires et contenu du code lié au post suivants pour enrichir ta réponse :\n${relevantLinks.join('\n')}\n\n`;
                         }
-                    });
-                    if (relevantLinks.length > 0) {
-                        documentationContext = `Considère les ressources documentaires et contenu du code lié au post suivants pour enrichir ta réponse :\n${relevantLinks.join('\n')}\n\n`;
                     }
+
+                    const prompt = `
+                        Tâche : Tu es un assistant IA, expert Jeedom qui aide à rédiger des réponses pour un forum sur la domotique Jeedom.
+                        Discussion : ${request.title || 'Non disponible'} (${request.categories?.join(' > ') || 'Non disponible'})
+                        ${documentationContext}
+                        Contexte : ${request.context}
+                        Instructions Persona "${persona.name}" : ${persona.customPrompt}
+                        Règles : Ton ${persona.tone}, Longueur ${persona.length}, Langue ${persona.language}. ${enableIcons ? 'Emojis autorisés.' : ''}
+
+                        Règles générales :
+                        - Analyse interne cachée. Rédige une réponse cohérente et utile.
+                        - Uniquement le texte à insérer, sans préambule superflu.
+                        - Sources : https://github.com/jeedom/core, https://docs.jeedom.com, https://community.jeedom.com
+
+                        Réponse suggérée :`;
+
+                    const text = await callGemini(model, apiKey, prompt);
+                    devApi.storage.local.set({ lastUsedPersonaId: request.personaId });
+                    sendResponseAsync({ text: text.trim() });
+                    break;
                 }
 
-                const fullReplyPrompt = `
-                    Tâche : Tu es un assistant IA, expert Jeedom qui aide à rédiger des réponses pour un forum sur la domotique Jeedom.
+                case 'rephraseText': {
+                    const { apiKey, personas, modelSettings } = await getSettings();
+                    const persona = getPersona(personas, request.personaId);
+                    const model = getModel(modelSettings, 'rephraseText', persona, personas);
 
-                    Informations sur la discussion :
-                    - Titre : ${request.title || 'Non disponible'}
-                    - Catégories : ${request.categories && request.categories.length > 0 ? request.categories.join(' > ') : 'Non disponible'}
+                    const prompt = `
+                        Tâche : Reformule le texte suivant en respectant les instructions.
+                        Texte : ${request.text}
+                        Instructions Persona "${persona.name}" : ${persona.tone}, ${persona.length}, ${persona.language}, ${persona.customPrompt}
+                        Règle : Réponse UNIQUEMENT avec le texte reformulé, sans préambule.
+                        Texte reformulé :`;
 
-                    ${documentationContext}
-                    Contexte de la discussion (plusieurs posts) : 
-                    ${request.context}
+                    const text = await callGemini(model, apiKey, prompt);
+                    sendResponseAsync({ text: text.trim() });
+                    break;
+                }
 
-                    Instructions de l'utilisateur (depuis la persona "${persona.name}") : ${persona.customPrompt}
+                case 'summarizeDiscussion': {
+                    const { apiKey, personas, modelSettings } = await getSettings();
+                    const model = getModel(modelSettings, 'summarizeDiscussion', null, personas);
 
-                    Règles de génération :
-                    - Ton à adopter : ${persona.tone}.
-                    - Longueur de la réponse : ${persona.length}.
-                    - Langue de la réponse : ${persona.language}.
-                    ${enableIcons ? `- Tu peux inclure des emojis dans la réponse si tu estimes que c'est utile.` : ''}
+                    const prompt = `
+                        Analyse cette discussion Jeedom (Titre: ${request.data.title}, Catégories: ${request.data.categories.join(' > ')})
+                        Premier Post: ${request.data.firstPost}
+                        Solution: ${request.data.solutionPost || "Aucun"}
+                        Texte complet: ${request.data.fullText}
 
-                    Règles générales :
-                    - Ton processus de pensée interne peut inclure une analyse structurée (identification du problème, résumé des solutions, évaluation du contexte, plan de réponse), MAIS CETTE ANALYSE NE DOIT PAS APPARAÎTRE DANS LA RÉPONSE FINALE.
-                    - Rédige une réponse cohérente, pertinente et utile.
-                    - La réponse doit être uniquement le texte à insérer dans l'éditeur, sans préambule ni salutation superflue.
-                    - Recherche dans le code si nécessaire : https://github.com/jeedom/core pour le core de Jeedom, https://docs.jeedom.com pour la documentation de jeedom et https://community.jeedom.com pour les autres posts de community jeedom
+                        Retourne UNIQUEMENT un objet JSON :
+                        {
+                          "title": "${request.data.title}",
+                          "problem": "Résumé concis du problème.",
+                          "solution": "Résumé de la solution.",
+                          "summary": "Résumé factuel en listes à puces."
+                        }`;
 
-                    Réponse suggérée :`;
+                    const text = await callGemini(model, apiKey, prompt);
+                    const jsonMatch = text.match(/\{.*\}/s);
+                    if (jsonMatch) {
+                        sendResponseAsync({ summary: JSON.parse(jsonMatch[0]) });
+                    } else {
+                        throw new Error("Réponse JSON invalide.");
+                    }
+                    break;
+                }
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: fullReplyPrompt }] }] })
-                });
+                case 'testPersona': {
+                    const { apiKey } = await getSettings(['apiKey']);
+                    const persona = request.persona;
+                    const prompt = `
+                        Tâche : Répond à "Explique-moi simplement ce qu'est un scénario Jeedom" avec la persona "${persona.name}".
+                        Règles : Ton ${persona.tone}, Longueur ${persona.length}, Langue ${persona.language}, ${persona.customPrompt}
+                        Règle : UNIQUEMENT le texte de réponse.
+                        Réponse :`;
 
-                if (!response.ok) { throw new Error(`Erreur HTTP ! statut : ${response.status}`); }
-                const data = await response.json();
-                sendResponseAsync({ text: data.candidates[0].content.parts[0].text.trim() });
+                    let text = await callGemini(persona.model || 'gemini-1.5-flash-latest', apiKey, prompt);
+                    text = text.trim();
+                    if (persona.prefix) text = persona.prefix + '\n\n' + text;
+                    if (persona.suffix) text = text + '\n\n' + persona.suffix;
+                    sendResponseAsync({ text });
+                    break;
+                }
 
-                devApi.storage.local.set({ lastUsedPersonaId: request.personaId });
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
+                case 'explainCode':
+                case 'verifyCode':
+                case 'optimizeCode':
+                case 'commentCode': {
+                    const { apiKey, personas, modelSettings } = await getSettings();
+                    const model = getModel(modelSettings, request.type, null, personas);
+
+                    let prompt = '';
+                    if (request.type === 'explainCode') {
+                        prompt = `Explique clairement ce code Jeedom en HTML (<b>, <ul>, <pre><code>) :\n${request.code}`;
+                    } else if (request.type === 'verifyCode') {
+                        prompt = `Analyse les erreurs de ce code Jeedom en HTML. Si aucune erreur, réponds "<p>Aucune erreur détectée.</p>". Sinon liste les problèmes en <ul> :\n${request.code}`;
+                    } else if (request.type === 'optimizeCode') {
+                        prompt = `Optimise ce code Jeedom (performance, lisibilité) en HTML (<b>, <ul>, <pre><code>) :\n${request.code}`;
+                    } else if (request.type === 'commentCode') {
+                        prompt = `Ajoute des commentaires au code suivant et retourne-le en HTML (<pre><code>) :\n${request.code}`;
+                    }
+
+                    const text = await callGemini(model, apiKey, prompt);
+                    sendResponseAsync({ text: cleanHtml(text) });
+                    break;
+                }
             }
-        })();
-        return true;
-    }
+        } catch (error) {
+            sendResponseAsync({ error: error.message });
+        }
+    };
 
-    if (request.type === 'rephraseText') {
-        (async () => {
-            try {
-                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
-                if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
-                if (!personas || personas.length === 0) { throw new Error('Aucune persona n\'est configurée.'); }
-
-                const persona = personas.find(p => p.id === request.personaId);
-                if (!persona) { throw new Error(`Persona avec l\'ID ${request.personaId} non trouvée.`); }
-                
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.rephraseText && modelSettings.rephraseText !== 'default') {
-                    model = modelSettings.rephraseText;
-                } else {
-                    model = persona.model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-
-                const rephrasePrompt = `
-                    Tâche : Tu es un expert en communication. Reformule le texte suivant en respectant les instructions de la persona.
-
-                    Texte à reformuler :
-                    --- TEXTE ORIGINAL ---
-                    ${request.text}
-                    --- FIN TEXTE ORIGINAL ---
-
-                    Instructions de la persona "${persona.name}" :
-                    - Ton à adopter : ${persona.tone}
-                    - Longueur de la réponse : ${persona.length}
-                    - Langue de la réponse : ${persona.language}
-                    - Instructions personnalisées : ${persona.customPrompt}
-
-                    Règles de génération :
-                    - La réponse doit être UNIQUEMENT le texte reformulé.
-                    - Ne pas ajouter de préambule, de salutations, ou de commentaires.
-
-                    Texte reformulé :`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: rephrasePrompt }] }] })
-                });
-
-                if (!response.ok) { throw new Error(`Erreur HTTP ! statut : ${response.status}`); }
-                const data = await response.json();
-                sendResponseAsync({ text: data.candidates[0].content.parts[0].text.trim() });
-
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
-
-    if (request.type === 'summarizeDiscussion') {
-        (async () => {
-            try {
-                const result = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
-                const { apiKey, personas, modelSettings } = result;
-
-                if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
-                
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.summarizeDiscussion && modelSettings.summarizeDiscussion !== 'default') {
-                    model = modelSettings.summarizeDiscussion;
-                } else if (personas && personas.length > 0) {
-                    model = personas[0].model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-                
-
-                const summaryPrompt = `
-                    Tu es un expert technique qui analyse des discussions de forum sur la domotique Jeedom.
-                    Voici les données de la discussion:
-                    Titre: ${request.data.title}
-                    Catégories: ${request.data.categories.join(' > ')}
-                    Tags: ${request.data.tags.join(', ')}
-                    Premier Post: ${request.data.firstPost}
-                    Solution: ${request.data.solutionPost || "Aucun"}
-                    Discussion complète: ${request.data.fullText}
-
-                    Ta tâche est de retourner UNIQUEMENT un objet JSON valide avec la structure suivante:
-                    {
-                      "title": "${request.data.title}",
-                      "problem": "Un résumé concis du problème initial.",
-                      "solution": "Un résumé de la solution proposée.",
-                      "summary": "Un résumé neutre et factuel de l\'ensemble des échanges, utilisant des listes à puces."
-                    }`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: summaryPrompt }] }] })
-                });
-
-                if (!response.ok) { throw new Error(`Erreur HTTP ! statut : ${response.status}`); }
-                const data = await response.json();
-                
-                const textResponse = data.candidates[0].content.parts[0].text;
-                const jsonMatch = textResponse.match(/\{.*\}/s);
-                if (jsonMatch) {
-                    sendResponseAsync({ summary: JSON.parse(jsonMatch[0]) });
-                } else {
-                    throw new Error("La réponse de l\'IA n\'était pas un JSON valide.");
-                }
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
-
-    if (request.type === 'testPersona') {
-        (async () => {
-            try {
-                const { apiKey } = await devApi.storage.local.get('apiKey');
-                if (!apiKey) { throw new Error('La clé API Gemini n\'est pas configurée.'); }
-
-                const persona = request.persona;
-
-                const testPrompt = `
-                    Tâche : Tu es un assistant IA. Tu dois répondre à une question de test en te basant sur la persona fournie.
-
-                    Question de test :
-                    "Explique-moi simplement ce qu\'est un scénario Jeedom."
-
-                    Instructions de la persona "${persona.name}" :
-                    - Ton à adopter : ${persona.tone}
-                    - Longueur de la réponse : ${persona.length}
-                    - Langue de la réponse : ${persona.language}
-                    - Instructions personnalisées : ${persona.customPrompt}
-
-                    Règles de génération :
-                    - La réponse doit être UNIQUEMENT le texte de la réponse.
-                    - Ne pas ajouter de préambule, de salutations, ou de commentaires.
-
-                    Texte de réponse :`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${persona.model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: testPrompt }] }] })
-                });
-
-                if (!response.ok) { throw new Error(`Erreur HTTP ! statut : ${response.status}`); }
-                const data = await response.json();
-                let testText = data.candidates[0].content.parts[0].text.trim();
-                if (persona.prefix) {
-                    testText = persona.prefix + '\n\n' + testText;
-                }
-                if (persona.suffix) {
-                    testText = testText + '\n\n' + persona.suffix;
-                }
-                sendResponseAsync({ text: testText });
-
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
-
-    if (request.type === 'explainCode') {
-        (async () => {
-            try {
-                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
-                if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
-                
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.explainCode && modelSettings.explainCode !== 'default') {
-                    model = modelSettings.explainCode;
-                } else if (personas && personas.length > 0) {
-                    model = personas[0].model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-
-                const explainPrompt = `
-                En tant qu'expert du développement sur la plateforme de domotique Jeedom, explique clairement et simplement ce que fait le bloc de code suivant.
-                Si le code contient une erreur évidente, signale-la.
-                L'explication doit être concise et facile à comprendre pour un utilisateur qui n'est pas forcément un développeur expert.
-                
-                **Formate ta réponse en HTML.** Utilise des balises comme '<b>' pour le gras, '<ul>' et '<li>' pour les listes, et '<pre><code>' pour les blocs de code.
-
-                Code à analyser :
-                ---
-                ${request.code}
-                ---
-                
-                Explication (en HTML) :`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: explainPrompt }] }] })
-                });
-                if (!response.ok) throw new Error(`Erreur HTTP ! statut : ${response.status}`);
-                const data = await response.json();
-                const textResponse = data.candidates[0].content.parts[0].text;
-                const cleanedText = textResponse.replace(/```html|```/g, '').trim();
-                sendResponseAsync({ text: cleanedText });
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
-
-    if (request.type === 'verifyCode') {
-        (async () => {
-            try {
-                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
-                if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
-                
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.verifyCode && modelSettings.verifyCode !== 'default') {
-                    model = modelSettings.verifyCode;
-                } else if (personas && personas.length > 0) {
-                    model = personas[0].model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-
-                const verifyPrompt = `
-                En tant qu'expert en débogage sur la plateforme de domotique Jeedom, analyse le bloc de code suivant.
-                Recherche les erreurs de syntaxe, les erreurs de logique courantes dans un contexte Jeedom, les mauvaises pratiques ou les problèmes de performance potentiels.
-
-                Si tu ne trouves aucune erreur, réponds UNIQUEMENT par la phrase : "<p>Aucune erreur évidente n'a été détectée.</p>"
-                Sinon, liste les problèmes trouvés en utilisant une liste HTML ('<ul>' et '<li>'). Explique chaque problème et en suggérant une correction si possible, en utilisant '<b>' pour mettre en évidence les points importants et '<pre><code>' pour les extraits de code.
-
-                **La réponse doit être entièrement au format HTML.**
-
-                Code à analyser :
-                ---
-                ${request.code}
-                ---
-
-                Analyse (en HTML) :`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: verifyPrompt }] }] })
-                });
-                if (!response.ok) throw new Error(`Erreur HTTP ! statut : ${response.status}`);
-                const data = await response.json();
-                const textResponse = data.candidates[0].content.parts[0].text;
-                const cleanedText = textResponse.replace(/```html|```/g, '').trim();
-                sendResponseAsync({ text: cleanedText });
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
-
-    if (request.type === 'optimizeCode') {
-        (async () => {
-            try {
-                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
-                if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
-                
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.optimizeCode && modelSettings.optimizeCode !== 'default') {
-                    model = modelSettings.optimizeCode;
-                } else if (personas && personas.length > 0) {
-                    model = personas[0].model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-
-                const optimizePrompt = `
-                En tant qu'expert en optimisation de code sur la plateforme de domotique Jeedom, analyse le bloc de code suivant.
-                Identifie les opportunités d'amélioration de performance, de lisibilité et de bonnes pratiques.
-                Propose des optimisations concrètes et explique les avantages de chaque changement.
-
-                **La réponse doit être entièrement au format HTML descriptif, SANS aucun JavaScript exécutable.**
-                Utilise des balises comme '<b>' pour le gras, '<ul>' et '<li>' pour les listes, et '<pre><code>' pour les blocs de code.
-                Mets en évidence le code original et le code optimisé à l'intérieur de balises <pre><code>.
-
-                Code à optimiser :
-                ---
-                ${request.code}
-                ---
-
-                Optimisation (en HTML) :`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: optimizePrompt }] }] })
-                });
-                if (!response.ok) throw new Error(`Erreur HTTP ! statut : ${response.status}`);
-                const data = await response.json();
-                const textResponse = data.candidates[0].content.parts[0].text;
-                const cleanedText = textResponse.replace(/```html|```/g, '').trim();
-                sendResponseAsync({ text: cleanedText });
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
-
-    if (request.type === 'commentCode') {
-        (async () => {
-            try {
-                const { apiKey, personas, modelSettings } = await devApi.storage.local.get(['apiKey', 'personas', 'modelSettings']);
-                if (!apiKey) throw new Error('La clé API Gemini n\'est pas configurée.');
-                
-                let model = 'gemini-1.5-flash-latest'; // Modèle de secours par défaut
-                if (modelSettings && modelSettings.commentCode && modelSettings.commentCode !== 'default') {
-                    model = modelSettings.commentCode;
-                } else if (personas && personas.length > 0) {
-                    model = personas[0].model;
-                }
-                if (!model) { throw new Error('Aucun modèle d\'IA n\'est configuré.'); }
-
-                const commentPrompt = `
-                En tant qu'expert en développement sur la plateforme de domotique Jeedom, ajoute des commentaires pertinents et clairs au bloc de code suivant.
-                Les commentaires doivent expliquer le but des sections complexes, les choix de conception importants et toute logique non évidente.
-                Les commentaires doivent suivre les conventions de langage du code fourni (par exemple, // pour JavaScript/PHP, # pour Python, -- pour SQL, etc.).
-
-                **La réponse doit être le code entièrement commenté, formaté en HTML** en utilisant une balise <pre><code>.
-
-                Code à commenter :
-                ---
-                ${request.code}
-                ---
-
-                Code commenté (en HTML) :`;
-
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: commentPrompt }] }] })
-                });
-                if (!response.ok) throw new Error(`Erreur HTTP ! statut : ${response.status}`);
-                const data = await response.json();
-                const textResponse = data.candidates[0].content.parts[0].text;
-                const cleanedText = textResponse.replace(/```html|```/g, '').trim();
-                sendResponseAsync({ text: cleanedText });
-            } catch (error) {
-                sendResponseAsync({ error: error.message });
-            }
-        })();
-        return true;
-    }
+    handleAction();
+    return true;
 });

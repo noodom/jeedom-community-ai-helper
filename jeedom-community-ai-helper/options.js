@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             item.addEventListener('dragover', (e) => {
-                e.preventDefault(); // Autoriser le dépôt
+                e.preventDefault();
                 e.stopPropagation();
                 if (e.dataTransfer.types.includes('text/plain')) {
                     const draggingId = e.dataTransfer.getData('text/plain');
@@ -320,7 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showPersonaEditor(show = true) {
         personaEditorDiv.classList.toggle('hidden', !show);
-        // Réinitialiser et masquer l'aperçu lorsque l'éditeur est masqué
         if (!show) {
             personaPreviewResult.style.display = 'none';
             personaPreviewResult.textContent = '';
@@ -473,14 +472,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Aucun lien par tag valide trouvé dans le fichier.');
                 }
 
-                // Pour simplifier, remplacer l\'existant ou ajouter un nouveau.
-                // Une logique plus complexe pourrait demander à l\'utilisateur ou fusionner par nom de tag.
+                // Pour simplifier, remplacer l'existant ou ajouter un nouveau.
+                // Une logique plus complexe pourrait demander à l'utilisateur ou fusionner par nom de tag.
                 validTagLinks.forEach(importedMapping => {
                     const existingIndex = tagLinkMappings.findIndex(m => m.tag === importedMapping.tag);
                     if (existingIndex > -1) {
-                        tagLinkMappings[existingIndex] = importedMapping; // Remplacer existant
+                        tagLinkMappings[existingIndex] = importedMapping;
                     } else {
-                        tagLinkMappings.push(importedMapping); // Ajouter nouveau
+                        tagLinkMappings.push(importedMapping);
                     }
                 });
 
@@ -610,10 +609,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateDefaultParagraphSelects() {
         [defaultOpeningParagraphSelect, defaultClosingParagraphSelect].forEach(selectElement => {
-            selectElement.innerHTML = '<option value="">Aucun</option>'; // Always have a "None" option
+            selectElement.innerHTML = '<option value="">Aucun</option>';
             paragraphs.forEach(paragraph => {
                 const option = document.createElement('option');
-                option.value = paragraph.title; // Use title as ID for simplicity
+                option.value = paragraph.title;
                 option.textContent = paragraph.title;
                 selectElement.appendChild(option);
             });
@@ -698,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateModelSelects() {
         const selects = document.querySelectorAll('.ai-model-select');
         selects.forEach(select => {
-            // Conserver l\'option par défaut, effacer les autres
+            // Conserver l'option par défaut, effacer les autres
             select.querySelectorAll('option:not([value="default"])').forEach(option => option.remove());
             AVAILABLE_MODELS.forEach(model => {
                 const option = document.createElement('option');
@@ -808,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ];
             }
             renderParagraphsList();
-            populateDefaultParagraphSelects(); // Populate the new selects
+            populateDefaultParagraphSelects();
 
             // Chargement des valeurs par défaut des paragraphes
             if (result.defaultOpeningParagraphId) {
@@ -818,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 defaultClosingParagraphSelect.value = result.defaultClosingParagraphId;
             }
 
-            // Charger les tags connus pour l\'autocomplétion
+            // Charger les tags connus pour l'autocomplétion
             if (result.allKnownTags) {
                 allKnownTags = result.allKnownTags;
                 initAutocomplete(newTagNameInput, allKnownTags);
@@ -918,7 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 devApi.storage.local.remove('tagToPrepopulate');
             }
         }
-        // Mettre à jour les tags pour l\'autocomplétion s\'ils changent
+        // Mettre à jour les tags pour l'autocomplétion s'ils changent
         if (namespace === 'local' && changes.allKnownTags) {
             allKnownTags = changes.allKnownTags.newValue || [];
             initAutocomplete(newTagNameInput, allKnownTags);

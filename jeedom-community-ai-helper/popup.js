@@ -1,7 +1,5 @@
-// Détection automatique de l'API disponible
 const devApi = typeof browser !== 'undefined' ? browser : chrome;
 
-// --- Assistant pour le formatage du temps ---
 function formatTimeAgo(timestamp) {
     const now = new Date();
     const past = new Date(timestamp);
@@ -20,7 +18,6 @@ function formatTimeAgo(timestamp) {
     return "d'il y a quelques secondes";
 }
 
-// --- Fonctions UI ---
 function setLoading(message) {
     const mainContent = document.getElementById('main-content');
     mainContent.innerHTML = `<div class="loading"><div class="loading-spinner"></div>${message}</div>`;
@@ -32,7 +29,6 @@ function setError(message) {
     document.getElementById('search-topic').style.display = 'none';
 }
 
-// --- Fonction Principale ---
 async function runAnalysis(forceRefresh = false) {
     const mainContent = document.getElementById('main-content');
     const footerBar = document.getElementById('footer-bar');
@@ -98,7 +94,6 @@ async function runAnalysis(forceRefresh = false) {
         const finalData = { ...summaryResponse.summary, ...dataResponse };
         populatePopup(finalData);
 
-        // Sauvegarder le nouveau résultat dans le cache
         const dataToCache = { ...finalData, timestamp: Date.now(), postCount: dataResponse.postCount };
         devApi.storage.local.set({ [cacheKey]: dataToCache }, () => {
             console.log("Nouveau résumé sauvegardé dans le cache.");
@@ -112,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function populatePopup(data) {
     const mainContent = document.getElementById('main-content');
-    // Clear only analysis content
     mainContent.innerHTML = '';
 
 
@@ -196,7 +190,6 @@ function populatePopup(data) {
         }
 
         const textNode = document.createElement('div');
-        // Convertir le markdown simple ou les listes en HTML
         textNode.innerHTML = formatSummaryContent(content);
         contentDiv.appendChild(textNode);
 
@@ -226,7 +219,6 @@ function populatePopup(data) {
     const summarySection = createCollapsibleSection('RÉSUMÉ DES ÉCHANGES', data.summary);
     if (summarySection) mainContent.appendChild(summarySection);
 
-    // Activer le bouton de recherche
     const searchButton = document.getElementById('search-topic');
     if (searchButton && data.title) {
         searchButton.style.display = 'flex'; // Utiliser flex pour centrer le SVG
@@ -247,7 +239,6 @@ function formatSummaryContent(content) {
         textContent = String(textContent);
     }
 
-    // Gestion basique des listes à puces si l'IA en renvoie
     return textContent
         .replace(/\n/g, '<br>')
         .replace(/- (.*?)(<br>|$)/g, '<li>$1</li>')
