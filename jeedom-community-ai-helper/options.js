@@ -1,3 +1,6 @@
+// Détection automatique de l'API disponible
+const devApi = typeof browser !== 'undefined' ? browser : chrome;
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- 0. Modèles d'IA disponibles ---
     const AVAILABLE_MODELS = [
@@ -9,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     // --- 1. Éléments du DOM ---
-    const manifest = chrome.runtime.getManifest();
+    const manifest = devApi.runtime.getManifest();
     document.getElementById('extension-version').textContent = manifest.version;
 
     // Paramètres globaux
@@ -112,9 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
             for (i = 0; i < arr.length; i++) {
                 if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
                     b = document.createElement("DIV");
-                    b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
-                    b.innerHTML += arr[i].substr(val.length);
-                    b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                    
+                    const strong = document.createElement("strong");
+                    strong.textContent = arr[i].substr(0, val.length);
+                    b.appendChild(strong);
+
+                    b.appendChild(document.createTextNode(arr[i].substr(val.length)));
+                    
+                    const inputHidden = document.createElement("input");
+                    inputHidden.type = "hidden";
+                    inputHidden.value = arr[i];
+                    b.appendChild(inputHidden);
+
                     b.addEventListener("click", function(e) {
                         inp.value = this.getElementsByTagName("input")[0].value;
                         closeAllLists();
@@ -248,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPersonaList() {
-        personaListDiv.innerHTML = '';
+        personaListDiv.replaceChildren();
         personas.forEach(persona => {
             const item = document.createElement('div');
             item.className = 'persona-list-item';
@@ -260,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             item.addEventListener('click', () => loadPersonaIntoEditor(persona.id));
 
-            // Événements de glisser-déposer
             item.addEventListener('dragstart', (e) => {
                 e.stopPropagation();
                 e.dataTransfer.setData('text/plain', persona.id);
@@ -268,11 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             item.addEventListener('dragover', (e) => {
-                e.preventDefault(); // Autoriser le dépôt
+                e.preventDefault();
                 e.stopPropagation();
                 if (e.dataTransfer.types.includes('text/plain')) {
                     const draggingId = e.dataTransfer.getData('text/plain');
-                    if (draggingId !== persona.id) { // Ne pas autoriser le dépôt sur soi-même
+                    if (draggingId !== persona.id) {
                         e.currentTarget.classList.add('drag-over');
                     }
                 }
@@ -317,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showPersonaEditor(show = true) {
         personaEditorDiv.classList.toggle('hidden', !show);
-        // Réinitialiser et masquer l'aperçu lorsque l'éditeur est masqué
         if (!show) {
             personaPreviewResult.style.display = 'none';
             personaPreviewResult.textContent = '';
@@ -371,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const personaData = {
-            id: currentEditingPersonaId || Date.now().toString(),
+            id: currentEditingPersonaId || Date.now().toString() + Math.random().toString(36).substring(2, 9),
             name: name,
             customPrompt: personaCustomPromptInput.value,
             prefix: personaPrefixInput.value,
@@ -420,13 +430,13 @@ document.addEventListener('DOMContentLoaded', () => {
         personaPreviewResult.style.color = '#333';
         personaPreviewResult.textContent = 'Génération de l\'aperçu...';
 
-        chrome.runtime.sendMessage({
+        devApi.runtime.sendMessage({
             type: 'testPersona',
             persona: currentPersona
         }, (response) => {
-            if (chrome.runtime.lastError || response.error) {
+            if (devApi.runtime.lastError || response.error) {
                 personaPreviewResult.style.color = 'red';
-                personaPreviewResult.textContent = `Erreur: ${response.error || chrome.runtime.lastError.message}`;
+                personaPreviewResult.textContent = `Erreur: ${response.error || devApi.runtime.lastError.message}`;
             } else {
                 personaPreviewResult.style.color = '#333';
                 personaPreviewResult.textContent = response.text;
@@ -435,7 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 5. Logique des Liens par Tag ---
-    // Fonctions d'export/import des Liens par Tag
     function exportTagLinks() {
         const dataStr = JSON.stringify(tagLinkMappings, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
@@ -475,9 +484,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 validTagLinks.forEach(importedMapping => {
                     const existingIndex = tagLinkMappings.findIndex(m => m.tag === importedMapping.tag);
                     if (existingIndex > -1) {
-                        tagLinkMappings[existingIndex] = importedMapping; // Remplacer existant
+                        tagLinkMappings[existingIndex] = importedMapping;
                     } else {
-                        tagLinkMappings.push(importedMapping); // Ajouter nouveau
+                        tagLinkMappings.push(importedMapping);
                     }
                 });
 
@@ -492,16 +501,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTagLinkList() {
         tagLinkMappings.sort((a, b) => a.tag.localeCompare(b.tag));
-        tagLinksListDiv.innerHTML = '';
+        tagLinksListDiv.replaceChildren();
         tagLinkMappings.forEach((mapping, index) => {
             const item = document.createElement('div');
             item.className = 'tag-list-item';
-            item.innerHTML = `
-                <span class="tag-name">${mapping.tag}</span>
-                <span class="tag-links">${Array.isArray(mapping.links) ? mapping.links.map(link => `<a href="${link.url}" target="_blank">${link.description}</a>`).join(', ') : ''}</span>
-                <button class="edit-tag-btn" data-index="${index}">Modifier</button>
-                <button class="delete-tag-btn" data-index="${index}">Supprimer</button>
-            `;
+
+            const tagNameSpan = document.createElement('span');
+            tagNameSpan.className = 'tag-name';
+            tagNameSpan.textContent = mapping.tag;
+            item.appendChild(tagNameSpan);
+
+            const tagLinksSpan = document.createElement('span');
+            tagLinksSpan.className = 'tag-links';
+            if (Array.isArray(mapping.links)) {
+                mapping.links.forEach((link, lIndex) => {
+                    const a = document.createElement('a');
+                    a.href = link.url;
+                    a.target = '_blank';
+                    a.textContent = link.description;
+                    tagLinksSpan.appendChild(a);
+                    if (lIndex < mapping.links.length - 1) {
+                        tagLinksSpan.appendChild(document.createTextNode(', '));
+                    }
+                });
+            }
+            item.appendChild(tagLinksSpan);
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-tag-btn';
+            editButton.dataset.index = index;
+            editButton.textContent = 'Modifier';
+            item.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-tag-btn';
+            deleteButton.dataset.index = index;
+            deleteButton.textContent = 'Supprimer';
+            item.appendChild(deleteButton);
             tagLinksListDiv.appendChild(item);
         });
 
@@ -569,16 +605,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Logique des paragraphes pré-enregistrés ---
     function renderParagraphsList() {
         paragraphs.sort((a, b) => a.title.localeCompare(b.title));
-        paragraphsListDiv.innerHTML = '';
+        paragraphsListDiv.replaceChildren();
         paragraphs.forEach((paragraph, index) => {
             const item = document.createElement('div');
             item.className = 'paragraph-list-item';
-            item.innerHTML = `
-                <span class="paragraph-title">${paragraph.title}</span>
-                <span class="paragraph-content">${paragraph.content}</span>
-                <button class="edit-paragraph-btn" data-index="${index}">Modifier</button>
-                <button class="delete-paragraph-btn" data-index="${index}">Supprimer</button>
-            `;
+
+            const paragraphTitleSpan = document.createElement('span');
+            paragraphTitleSpan.className = 'paragraph-title';
+            paragraphTitleSpan.textContent = paragraph.title;
+            item.appendChild(paragraphTitleSpan);
+
+            const paragraphContentSpan = document.createElement('span');
+            paragraphContentSpan.className = 'paragraph-content';
+            paragraphContentSpan.textContent = paragraph.content;
+            item.appendChild(paragraphContentSpan);
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-paragraph-btn';
+            editButton.dataset.index = index;
+            editButton.textContent = 'Modifier';
+            item.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-paragraph-btn';
+            deleteButton.dataset.index = index;
+            deleteButton.textContent = 'Supprimer';
+            item.appendChild(deleteButton);
             paragraphsListDiv.appendChild(item);
         });
 
@@ -607,10 +659,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateDefaultParagraphSelects() {
         [defaultOpeningParagraphSelect, defaultClosingParagraphSelect].forEach(selectElement => {
-            selectElement.innerHTML = '<option value="">Aucun</option>'; // Always have a "None" option
+            selectElement.replaceChildren();
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Aucun';
+            selectElement.appendChild(defaultOption);
             paragraphs.forEach(paragraph => {
                 const option = document.createElement('option');
-                option.value = paragraph.title; // Use title as ID for simplicity
+                option.value = paragraph.title;
                 option.textContent = paragraph.title;
                 selectElement.appendChild(option);
             });
@@ -695,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateModelSelects() {
         const selects = document.querySelectorAll('.ai-model-select');
         selects.forEach(select => {
-            // Conserver l'option par défaut, effacer les autres
             select.querySelectorAll('option:not([value="default"])').forEach(option => option.remove());
             AVAILABLE_MODELS.forEach(model => {
                 const option = document.createElement('option');
@@ -713,15 +768,12 @@ document.addEventListener('DOMContentLoaded', () => {
             'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'
         ];
 
-        chrome.storage.local.get(keysToLoad, (result) => {
-            // Remplir les modèles
+        devApi.storage.local.get(keysToLoad, (result) => {
             populateModelSelects();
 
-            // Chargement des paramètres globaux
             if (result.apiKey) apiKeyInput.value = result.apiKey;
-            enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true; // Default to true
+            enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true;
 
-            // Chargement des paramètres de visibilité des boutons
             showSpellCheckButtonCheckbox.checked = result.showSpellCheckButton !== undefined ? result.showSpellCheckButton : true;
             showRephraseButtonCheckbox.checked = result.showRephraseButton !== undefined ? result.showRephraseButton : true;
             showPersonaButtonCheckbox.checked = result.showPersonaButton !== undefined ? result.showPersonaButton : true;
@@ -805,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ];
             }
             renderParagraphsList();
-            populateDefaultParagraphSelects(); // Populate the new selects
+            populateDefaultParagraphSelects();
 
             // Chargement des valeurs par défaut des paragraphes
             if (result.defaultOpeningParagraphId) {
@@ -834,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Pré-remplir le champ de tag si un tag a été cliqué depuis le popup
             if (result.tagToPrepopulate) {
                 newTagNameInput.value = result.tagToPrepopulate;
-                chrome.storage.local.remove('tagToPrepopulate');
+                devApi.storage.local.remove('tagToPrepopulate');
             }
         });
     }
@@ -844,7 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatusMessage('Erreur: La clé API est requise.', true);
             return;
         }
-        chrome.storage.local.set({
+        devApi.storage.local.set({
             apiKey: apiKeyInput.value,
             enableIcons: enableIconsCheckbox.checked,
             personas: personas,
@@ -906,13 +958,13 @@ document.addEventListener('DOMContentLoaded', () => {
     testPersonaBtn.addEventListener('click', handleTestPersona);
 
     // Écouter les changements depuis d'autres parties de l'extension, comme le popup
-    chrome.storage.onChanged.addListener((changes, namespace) => {
+    devApi.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local' && changes.tagToPrepopulate) {
             const newValue = changes.tagToPrepopulate.newValue;
             if (newValue) {
                 newTagNameInput.value = newValue;
                 newTagNameInput.focus();
-                chrome.storage.local.remove('tagToPrepopulate');
+                devApi.storage.local.remove('tagToPrepopulate');
             }
         }
         // Mettre à jour les tags pour l'autocomplétion s'ils changent

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Paramètres de Jeedom Community AI Helper</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --jeedom-dark: #2e3d4c;
+            --jeedom-green: #94ca02;
+            --jeedom-bg: #f6f6f6;
+            --jeedom-text: #2c3e50;
+            --jeedom-border: #dddddd;
+            --jeedom-danger: #d9534f;
+        }
+
+        body {
+            background-color: var(--jeedom-bg);
+            color: var(--jeedom-text);
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .options-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--jeedom-border);
+        }
+
+        h1 {
+            color: var(--jeedom-dark);
+            font-size: 24px;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid var(--jeedom-green);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: var(--jeedom-dark);
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-left: 4px solid var(--jeedom-green);
+            padding-left: 10px;
+        }
+
+        h3 {
+            font-size: 16px;
+            color: var(--jeedom-dark);
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--jeedom-dark);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--jeedom-border);
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--jeedom-green);
+            box-shadow: 0 0 0 2px rgba(148, 202, 2, 0.1);
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid var(--jeedom-border);
+            margin: 25px 0;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        #save,
+        #save-persona-btn,
+        #add-tag-btn,
+        #add-persona-btn,
+        #add-paragraph-btn {
+            background-color: var(--jeedom-green);
+            color: white;
+        }
+
+        #save:hover,
+        #save-persona-btn:hover,
+        #add-tag-btn:hover,
+        #add-persona-btn:hover,
+        #add-paragraph-btn:hover {
+            background-color: #82b202;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary,
+        #cancel-persona-btn {
+            background-color: #e0e0e0;
+            color: var(--jeedom-text);
+        }
+
+        .btn-danger,
+        .delete-btn {
+            background-color: var(--jeedom-danger);
+            color: white;
+        }
+
+        /* Tag list specific */
+        #tag-links-list {
+            margin-top: 15px;
+            border: 1px solid var(--jeedom-border);
+            border-radius: 4px;
+            background: #fafafa;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .tag-list-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--jeedom-border);
+        }
+
+        .tag-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .tag-list-item .tag-name {
+            font-weight: bold;
+            color: var(--jeedom-dark);
+            background: var(--jeedom-green);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .tag-list-item .tag-links {
+            flex-grow: 1;
+            font-size: 13px;
+        }
+
+        /* Paragraph list specific */
+        #paragraphs-list {
+            margin-top: 15px;
+            border: 1px solid var(--jeedom-border);
+            border-radius: 4px;
+            background: #fafafa;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .paragraph-list-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--jeedom-border);
+        }
+
+        .paragraph-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .paragraph-list-item .paragraph-title {
+            font-weight: bold;
+            color: var(--jeedom-dark);
+            min-width: 150px;
+        }
+
+        .paragraph-list-item .paragraph-content {
+            flex-grow: 1;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        /* Persona specific */
+        .persona-container {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            background: #fcfcfc;
+            border: 1px solid var(--jeedom-border);
+            border-radius: 4px;
+            padding: 20px;
+        }
+
+        #persona-list-container {
+            flex: 1;
+            max-width: 300px;
+        }
+
+        #persona-list {
+            border: 1px solid var(--jeedom-border);
+            border-radius: 4px;
+            background: white;
+            margin-bottom: 15px;
+        }
+
+        .persona-list-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--jeedom-border);
+            transition: background 0.2s;
+        }
+
+        .persona-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .persona-list-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .persona-list-item.selected {
+            background-color: #eef7d5;
+            border-left: 4px solid var(--jeedom-green);
+            font-weight: bold;
+        }
+
+        #persona-editor {
+            flex: 2;
+            padding-left: 30px;
+            border-left: 1px solid var(--jeedom-border);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Footer */
+        .footer-bandeau {
+            background-color: var(--jeedom-dark) !important;
+            border-radius: 0 0 8px 8px;
+            margin-top: 40px !important;
+            padding: 20px !important;
+        }
+
+        .footer-bandeau a {
+            color: var(--jeedom-green) !important;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* Autocomplete for tags */
+        .autocomplete-container {
+            position: relative;
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid var(--jeedom-border);
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--jeedom-border);
+        }
+
+        .autocomplete-items div:hover {
+            background-color: #e9e9e9;
+        }
+
+        .autocomplete-active {
+            background-color: var(--jeedom-green) !important;
+            color: #ffffff;
+        }
+
+        .action-buttons-visibility .form-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-buttons-visibility .form-group label {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+<div class="options-container">
+    <h1>
+        <img src="icons/icon48.png" alt="Logo"
+             style="vertical-align: middle; margin-right: 15px; width: 32px; height: 32px;">
+        Paramètres de Jeedom Community AI Helper
+    </h1>
+    <div class="form-group">
+        <label for="apiKey">Clé API Gemini</label>
+        <input type="password" id="apiKey" placeholder="Entrez votre clé API Google AI Studio">
+        <small style="color: #666; display: block; margin-top: 5px;">Votre clé est stockée localement dans votre
+            navigateur.</small>
+    </div>
+    <hr>
+    <h2>Personas de l'IA</h2>
+    <div class="persona-container">
+        <div id="persona-list-container">
+            <p style="font-size: 13px; margin-bottom: 15px; color: #666;">Sélectionnez une persona à modifier ou
+                ajoutez-en une nouvelle.</p>
+            <div id="persona-list"></div>
+            <button id="add-persona-btn" style="width: 100%;">+ Nouvelle Persona</button>
+            <div class="persona-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+                <button id="export-personas-btn" class="btn-secondary" style="flex-grow: 1;">Exporter
+                    Personas</button>
+                <button id="import-personas-btn" class="btn-secondary" style="flex-grow: 1;">Importer
+                    Personas</button>
+                <input type="file" id="import-file" accept=".json" class="hidden">
+            </div>
+        </div>
+        <div id="persona-editor" class="hidden">
+            <h3 id="persona-editor-title">Éditeur de Persona</h3>
+            <input type="hidden" id="persona-id">
+            <div class="form-group">
+                <label for="persona-name">Nom de la Persona</label>
+                <input type="text" id="persona-name" placeholder="Ex: Expert Technique">
+            </div>
+            <div class="form-group">
+                <label for="persona-customPrompt">Instructions personnalisées</label>
+                <textarea id="persona-customPrompt" rows="5"
+                          placeholder="Décrivez comment l'IA doit se comporter..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="persona-prefix">Préfixe de la réponse</label>
+                <textarea id="persona-prefix" rows="2"
+                          placeholder="Texte à ajouter au début de la réponse de l'IA (ex: 'Message de votre Assistant IA : ')"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="persona-suffix">Suffixe de la réponse</label>
+                <textarea id="persona-suffix" rows="2"
+                          placeholder="Texte à ajouter à la fin de la réponse de l'IA (ex: '--- Fin du message ---')"></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="persona-tone">Ton</label>
+                    <select id="persona-tone">
+                        <option value="amical et serviable">Amical et serviable</option>
+                        <option value="professionnel et direct">Professionnel et direct</option>
+                        <option value="enthousiaste et positif">Enthousiaste et positif</option>
+                        <option value="humoristique">Humoristique</option>
+                        <option value="neutre">Neutre</option>
+                        <option value="sarcastique et condescendant">Sarcastique et condescendant</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="persona-length">Longueur</label>
+                    <select id="persona-length">
+                        <option value="moyenne (quelques phrases)">Moyenne</option>
+                        <option value="courte (1-2 phrases)">Courte</option>
+                        <option value="détaillée (plusieurs paragraphes)">Détaillée</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="persona-language">Langue</label>
+                    <input type="text" id="persona-language" placeholder="Français">
+                </div>
+                <div class="form-group">
+                    <label for="persona-model">Modèle d'IA</label>
+                    <select id="persona-model" class="ai-model-select">
+                        <!-- Options will be dynamically populated by JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="persona-editor-actions" style="display: flex; gap: 10px;">
+                <button id="save-persona-btn">Enregistrer</button>
+                <button id="cancel-persona-btn" class="btn-secondary">Annuler</button>
+                <button id="delete-persona-btn" class="btn-danger hidden">Supprimer</button>
+            </div>
+            <div class="persona-preview-container" style="margin-top: 20px;">
+                <button id="test-persona-btn" class="btn-secondary">Tester ce Persona</button>
+                <div id="persona-preview-result"
+                     style="margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px solid #eee; border-radius: 4px; min-height: 50px; white-space: pre-wrap; font-size: 13px; color: #333; display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <h2>Apparence des réponses</h2>
+    <div class="form-group"
+         style="display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px;">
+        <input type="checkbox" id="enableIcons" style="width: 20px; height: 20px; cursor: pointer;">
+        <label for="enableIcons" style="margin-bottom: 0; cursor: pointer;">Activer les emojis dans la réponse (l'IA
+            décidera de leur pertinence)</label>
+    </div>
+    <hr>
+    <h2>Visibilité des boutons d'action</h2>
+    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Cochez les boutons que vous souhaitez afficher dans la barre d'outils de l'éditeur.</p>
+    <div class="action-buttons-visibility" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="form-group">
+            <input type="checkbox" id="show-spell-check-button" style="width: 20px; height: 20px; cursor: pointer;">
+            <label for="show-spell-check-button">Bouton 'Corriger l'orthographe'</label>
+        </div>
+        <div class="form-group">
+            <input type="checkbox" id="show-rephrase-button" style="width: 20px; height: 20px; cursor: pointer;">
+            <label for="show-rephrase-button">Bouton 'Reformuler par IA'</label>
+        </div>
+        <div class="form-group">
+            <input type="checkbox" id="show-persona-button" style="width: 20px; height: 20px; cursor: pointer;">
+            <label for="show-persona-button">Bouton 'Génération IA'</label>
+        </div>
+        <div class="form-group">
+            <input type="checkbox" id="show-paragraphs-button" style="width: 20px; height: 20px; cursor: pointer;">
+            <label for="show-paragraphs-button">Bouton 'Paragraphes pré-enregistrés'</label>
+        </div>
+    </div>
+    <hr>
+    <h2>Modèles d'IA par Fonctionnalité</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Choisissez un modèle d'IA spécifique pour chaque
+            type de tâche. Si "Défaut (Persona/Fallback)" est sélectionné, l'extension utilisera le modèle de la persona
+            active ou, si aucune n'est active, un modèle par défaut (généralement 'gemini-2.5-flash-lite' pour le
+            résumé).</p>    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="form-group">
+            <label for="model-summarizeDiscussion">Résumé de Discussion</label>
+            <select id="model-summarizeDiscussion" class="ai-model-select">
+                <option value="default">Défaut (Persona/Fallback)</option>
+                <!-- Options will be dynamically populated by JS -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="model-explainCode">Expliquer le Code</label>
+            <select id="model-explainCode" class="ai-model-select">
+                <option value="default">Défaut (Persona/Fallback)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="model-verifyCode">Vérifier le Code</label>
+            <select id="model-verifyCode" class="ai-model-select">
+                <option value="default">Défaut (Persona/Fallback)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="model-optimizeCode">Optimiser le Code</label>
+            <select id="model-optimizeCode" class="ai-model-select">
+                <option value="default">Défaut (Persona/Fallback)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="model-commentCode">Commenter le Code</label>
+            <select id="model-commentCode" class="ai-model-select">
+                <option value="default">Défaut (Persona/Fallback)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="model-rephraseText">Reformuler le Texte</label>
+            <select id="model-rephraseText" class="ai-model-select">
+                <option value="default">Défaut (Persona/Fallback)</option>
+            </select>
+        </div>
+    </div>
+    <hr>
+    <h2>Liens utiles par Tag</h2>
+    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Associez des liens de documentation ou de code à
+        des tags spécifiques pour enrichir les réponses.</p>
+    <div id="tag-links-list"></div>
+    <div class="tag-link-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+        <button id="export-tag-links-btn" class="btn-secondary" style="flex-grow: 1;">Exporter Liens</button>
+        <button id="import-tag-links-btn" class="btn-secondary" style="flex-grow: 1;">Importer Liens</button>
+        <input type="file" id="import-tag-links-file" accept=".json" class="hidden">
+    </div>
+    <div class="form-group" style="display: flex; gap: 10px; margin-top: 15px;">
+        <div class="autocomplete-container" style="flex-basis: 150px;">
+            <input type="text" id="new-tag-name" placeholder="Nom du tag">
+        </div>
+        <input type="text" id="new-tag-links" placeholder="Ex: Documentation|https://doc.jeedom.com, Github|..."
+               style="flex-grow: 1;">
+        <button id="add-tag-btn">Ajouter</button>
+        <button id="cancel-tag-edit-btn" class="btn-secondary hidden">Annuler</button>
+    </div>
+    <hr>
+    <h2>Paramètres par défaut pour les messages</h2>
+    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Sélectionnez des paragraphes pré-enregistrés à insérer automatiquement lors de la création d'un nouveau message.</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="form-group">
+            <label for="default-opening-paragraph">Paragraphe de début par défaut</label>
+            <select id="default-opening-paragraph">
+                <option value="">Aucun</option>
+                <!-- Options populated by JS -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="default-closing-paragraph">Paragraphe de fin par défaut</label>
+            <select id="default-closing-paragraph">
+                <option value="">Aucun</option>
+                <!-- Options populated by JS -->
+            </select>
+        </div>
+    </div>
+    <hr>
+    <h2>Réponses pré-enregistrées</h2>
+    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Créez des paragraphes de texte à insérer rapidement
+        dans vos réponses.</p>
+    <div id="paragraphs-list"></div>
+    <div class="paragraph-management-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+        <button id="export-paragraphs-btn" class="btn-secondary" style="flex-grow: 1;">Exporter les
+            paragraphes</button>
+        <button id="import-paragraphs-btn" class="btn-secondary" style="flex-grow: 1;">Importer les
+            paragraphes</button>
+        <input type="file" id="import-paragraphs-file" accept=".json" class="hidden">
+    </div>
+    <div class="form-group" style="margin-top: 15px;">
+        <input type="text" id="new-paragraph-title" placeholder="Titre du paragraphe (ex: Salutations)">
+    </div>
+    <div class="form-group" style="margin-top: 10px;">
+            <textarea id="new-paragraph-content" rows="4"
+                      placeholder="Contenu du paragraphe..."></textarea>
+    </div>
+    <div class="form-group" style="display: flex; gap: 10px; margin-top: 10px;">
+        <button id="add-paragraph-btn">Ajouter le paragraphe</button>
+        <button id="cancel-paragraph-edit-btn" class="btn-secondary hidden">Annuler</button>
+    </div>
+    <div
+            style="margin-top: 40px; text-align: center; border-top: 2px solid var(--jeedom-border); padding-top: 20px;">
+        <button id="save" style="padding: 15px 40px; font-size: 16px;">ENREGISTRER TOUS LES PARAMÈTRES</button>
+        <div id="status"></div>
+    </div>
+    <div class="footer-bandeau"
+         style="background-color:#673ab7;text-align: center; margin-top: 20px; padding: 10px; border-top: 1px solid #eee; font-size: 0.9em; color: #fff;">
+        <p>Développé par Noodom</p>
+        <a href="https://github.com/noodom" target="_blank" rel="noopener noreferrer"><img src="images/noodom.jpg"
+                                                                                           alt="Noodom Logo"
+                                                                                           style="border-radius:50%;width: 48px; height: 48px; vertical-align: middle; margin-left: 5px;"></a>
+        <p>Version: <span id="extension-version"></span></p>
+        <a href="https://paypal.me/noodomfr" target="_blank" rel="noopener noreferrer">
+            <img alt="PayPal" src="images/paypal.svg">
+        </a>
+    </div>
+</div>
+<script src="options.js"></script>
+</body>
+
+</html>
