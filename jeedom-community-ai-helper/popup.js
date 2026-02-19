@@ -20,7 +20,7 @@ function formatTimeAgo(timestamp) {
 
 function setLoading(message) {
     const mainContent = document.getElementById('main-content');
-    mainContent.replaceChildren(); // Safe alternative to innerHTML = ''
+    mainContent.replaceChildren();
 
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'loading';
@@ -53,6 +53,12 @@ async function runAnalysis(forceRefresh = false) {
     const cacheInfo = document.getElementById('cache-info');
     const refreshButton = document.getElementById('refresh-summary');
     document.getElementById('search-topic').style.display = 'none';
+
+    devApi.storage.local.get('fontSize', (result) => {
+        if (result.fontSize) {
+            document.documentElement.style.setProperty('--base-font-size', `${result.fontSize}px`);
+        }
+    });
 
     footerBar.style.display = 'none';
     setLoading('Analyse de la discussion en cours...');
@@ -186,7 +192,6 @@ function populatePopup(data) {
         copyButton.title = 'Copier le résumé';
         copyButton.style.cssText = 'background: none; border: none; cursor: pointer; color: var(--jeedom-text-color); margin-left: 5px; vertical-align: middle;';
 
-        // Use SVG element directly
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("width", "12");
         svg.setAttribute("height", "12");

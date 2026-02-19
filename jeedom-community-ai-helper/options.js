@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Paramètres globaux
     const apiKeyInput = document.getElementById('apiKey');
     const enableIconsCheckbox = document.getElementById('enableIcons');
+    const fontSizeInput = document.getElementById('fontSize');
     const showSpellCheckButtonCheckbox = document.getElementById('show-spell-check-button');
     const showRephraseButtonCheckbox = document.getElementById('show-rephrase-button');
     const showPersonaButtonCheckbox = document.getElementById('show-persona-button');
@@ -763,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadSettings() {
         const keysToLoad = [
-            'apiKey', 'enableIcons', 'personas', 'tagLinkMappings', 'paragraphs', 'tagToPrepopulate', 'allKnownTags', 'modelSettings',
+            'apiKey', 'enableIcons', 'fontSize', 'personas', 'tagLinkMappings', 'paragraphs', 'tagToPrepopulate', 'allKnownTags', 'modelSettings',
             'defaultOpeningParagraphId', 'defaultClosingParagraphId',
             'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'
         ];
@@ -773,6 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.apiKey) apiKeyInput.value = result.apiKey;
             enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true;
+            fontSizeInput.value = result.fontSize || 13;
 
             showSpellCheckButtonCheckbox.checked = result.showSpellCheckButton !== undefined ? result.showSpellCheckButton : true;
             showRephraseButtonCheckbox.checked = result.showRephraseButton !== undefined ? result.showRephraseButton : true;
@@ -899,6 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
         devApi.storage.local.set({
             apiKey: apiKeyInput.value,
             enableIcons: enableIconsCheckbox.checked,
+            fontSize: parseInt(fontSizeInput.value, 10) || 13,
             personas: personas,
             tagLinkMappings: tagLinkMappings,
             paragraphs: paragraphs,
