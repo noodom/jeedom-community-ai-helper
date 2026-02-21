@@ -1,4 +1,4 @@
-// Détection automatique de l'API disponible
+// Détection automatique de l'API disponible (Chrome ou Firefox)
 const devApi = typeof browser !== 'undefined' ? browser : chrome;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { value: 'gemini-2.5-flash-lite', label: '2.5 Flash Lite' }
     ];
 
-    // --- 1. Éléments du DOM ---
+    // --- 1. Récupération des Éléments du DOM ---
     const manifest = devApi.runtime.getManifest();
     document.getElementById('extension-version').textContent = manifest.version;
 
@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiKeyInput = document.getElementById('apiKey');
     const enableIconsCheckbox = document.getElementById('enableIcons');
     const fontSizeInput = document.getElementById('fontSize');
+    const maxDiscussionSizeInput = document.getElementById('maxDiscussionSize');
+    const forceLoadAllPostsCheckbox = document.getElementById('forceLoadAllPosts');
     const showSpellCheckButtonCheckbox = document.getElementById('show-spell-check-button');
     const showRephraseButtonCheckbox = document.getElementById('show-rephrase-button');
     const showPersonaButtonCheckbox = document.getElementById('show-persona-button');
@@ -52,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelOptimizeCodeSelect = document.getElementById('model-optimizeCode');
     const modelCommentCodeSelect = document.getElementById('model-commentCode');
     const modelRephraseTextSelect = document.getElementById('model-rephraseText');
-
 
     // Interface des liens par tag
     const tagLinksListDiv = document.getElementById('tag-links-list');
@@ -220,8 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Aucune persona valide trouvée dans le fichier.');
                 }
 
-                // Fusionner ou remplacer ? Pour simplifier, remplacement ou ajout si nouvel ID.
-                // Une logique plus complexe pourrait demander à l'utilisateur ou fusionner par ID.
+                // Fusionner ou remplacer les personas existantes / ajouter les nouvelles
                 validPersonas.forEach(importedPersona => {
                     const existingIndex = personas.findIndex(p => p.id === importedPersona.id);
                     if (existingIndex > -1) {
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // S'assurer que les ID sont uniques pour les nouvelles personas qui pourraient entrer en conflit
+                // S'assurer que les ID sont uniques pour les nouvelles personas
                 personas = personas.map(p => {
                     if (!p.id || typeof p.id !== 'string') {
                         return { ...p, id: Date.now().toString() + Math.random().toString(36).substring(2, 9) };
@@ -480,8 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Aucun lien par tag valide trouvé dans le fichier.');
                 }
 
-                // Pour simplifier, remplacer l'existant ou ajouter un nouveau.
-                // Une logique plus complexe pourrait demander à l'utilisateur ou fusionner par nom de tag.
+                // Fusionner ou remplacer l'existant ou ajouter un nouveau.
                 validTagLinks.forEach(importedMapping => {
                     const existingIndex = tagLinkMappings.findIndex(m => m.tag === importedMapping.tag);
                     if (existingIndex > -1) {
@@ -621,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
             paragraphContentSpan.textContent = paragraph.content;
             item.appendChild(paragraphContentSpan);
 
+            // Boutons d'édition et de suppression
             const editButton = document.createElement('button');
             editButton.className = 'edit-paragraph-btn';
             editButton.dataset.index = index;
@@ -764,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadSettings() {
         const keysToLoad = [
-            'apiKey', 'enableIcons', 'fontSize', 'personas', 'tagLinkMappings', 'paragraphs', 'tagToPrepopulate', 'allKnownTags', 'modelSettings',
+            'apiKey', 'enableIcons', 'fontSize', 'maxDiscussionSize', 'forceLoadAllPosts', 'personas', 'tagLinkMappings', 'paragraphs', 'tagToPrepopulate', 'allKnownTags', 'modelSettings',
             'defaultOpeningParagraphId', 'defaultClosingParagraphId',
             'showSpellCheckButton', 'showRephraseButton', 'showPersonaButton', 'showParagraphsButton'
         ];
@@ -775,6 +775,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.apiKey) apiKeyInput.value = result.apiKey;
             enableIconsCheckbox.checked = result.enableIcons !== undefined ? result.enableIcons : true;
             fontSizeInput.value = result.fontSize || 13;
+            maxDiscussionSizeInput.value = result.maxDiscussionSize || 30000; // Valeur par défaut
+            forceLoadAllPostsCheckbox.checked = result.forceLoadAllPosts !== undefined ? result.forceLoadAllPosts : true; // Valeur par défaut
 
             showSpellCheckButtonCheckbox.checked = result.showSpellCheckButton !== undefined ? result.showSpellCheckButton : true;
             showRephraseButtonCheckbox.checked = result.showRephraseButton !== undefined ? result.showRephraseButton : true;
@@ -902,6 +904,8 @@ document.addEventListener('DOMContentLoaded', () => {
             apiKey: apiKeyInput.value,
             enableIcons: enableIconsCheckbox.checked,
             fontSize: parseInt(fontSizeInput.value, 10) || 13,
+            maxDiscussionSize: parseInt(maxDiscussionSizeInput.value, 10) || 30000,
+            forceLoadAllPosts: forceLoadAllPostsCheckbox.checked,
             personas: personas,
             tagLinkMappings: tagLinkMappings,
             paragraphs: paragraphs,

@@ -7,7 +7,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// État global
+// État global de l'extension
 let personas = [];
 let paragraphs = [];
 let lastUsedPersonaId = null;
@@ -19,7 +19,7 @@ let showRephraseButton = true;
 let showPersonaButton = true;
 let showParagraphsButton = true;
 
-// --- Utility for safe DOM elements ---
+// --- Utilitaires pour les éléments DOM ---
 function createSvgElement(pathD, viewBox = "0 -960 960 960") {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("height", "24");
@@ -58,6 +58,7 @@ function createSpinnerSvg() {
     return svg;
 }
 
+// SVG pour les icônes
 const USER_ICON_D = "m480-120-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125ZM200-200l-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Zm560 0-58-125-125-58 125-58 58-125 58 125 125 58-125 58-58 125Z";
 const SPELL_ICON_D = "M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v200h-80v-200H200v560h240v80H200Zm520-40-56-56 103-104-103-104 56-56 160 160-160 160ZM280-600h320v-80H280v80Zm0 160h160v-80H280v80Z";
 const REPHRASE_ICON_D = "M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80ZM120-80q-33 0-56.5-23.5T40-160v-640q0-33 23.5-56.5T120-880h520l280 280v520q0 33-23.5 56.5T840-80H120Zm540-550v-170H120v640h720v-470H660Zm-20 170h170L640-630v170Z";
@@ -71,33 +72,110 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.type === 'getDiscussionData') {
-        const firstPost = document.querySelector('.topic-post:first-of-type');
-        const solutionPost = document.querySelector('.accepted-text')?.closest('.topic-post');
+        (async () => {
+            const settings = await devApi.storage.local.get(['maxDiscussionSize', 'forceLoadAllPosts']);
+            const limit = settings.maxDiscussionSize || 30000; // Limite par défaut
+            const shouldForceScroll = settings.forceLoadAllPosts !== undefined ? settings.forceLoadAllPosts : true;
 
-        const data = {
-            title: document.querySelector('a.fancy-title')?.innerText.trim(),
-            categories: Array.from(document.querySelectorAll('.topic-category .badge-category__name')).map(c => c.innerText),
-            tags: Array.from(document.querySelectorAll('.list-tags .discourse-tag')).map(t => t.innerText),
-            firstPost: firstPost?.querySelector('.cooked')?.innerText,
-            solutionPost: solutionPost?.querySelector('.cooked')?.innerText.trim() || null,
-            fullText: Array.from(document.querySelectorAll('.topic-post .cooked')).map(p => p.innerText).join('\n\n---\n\n'),
-            postCount: document.querySelectorAll('.topic-post').length,
-            originalPosterUsername: firstPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(),
-            originalPosterAvatar: firstPost?.querySelector('.post-avatar .avatar')?.src,
-            solutionAuthorUsername: solutionPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(),
-            solutionAuthorAvatar: solutionPost?.querySelector('.post-avatar .avatar')?.src,
-            solutionLink: solutionPost ? new URL(solutionPost.querySelector('.post-date a').href).pathname : null
-        };
-        
-        if (data.tags.length > 0) {
-            devApi.storage.local.get('allKnownTags', (result) => {
-                const knownTags = new Set(result.allKnownTags || []);
-                data.tags.forEach(tag => knownTags.add(tag));
-                devApi.storage.local.set({ allKnownTags: Array.from(knownTags).sort() });
-            });
-        }
+            if (shouldForceScroll) {
+                let lastVisiblePost = null;
+                const postsBeforeLoad = document.querySelectorAll('.topic-post');
+                for (let i = postsBeforeLoad.length - 1; i >= 0; i--) {
+                    const post = postsBeforeLoad[i];
+                    const rect = post.getBoundingClientRect();
+                    if (rect.top < window.innerHeight && rect.bottom >= 0) {
+                        lastVisiblePost = post;
+                        break;
+                    }
+                }
 
-        sendResponse(data);
+                async function loadAllPosts() {
+                    console.log('[AI-HELPER-DEBUG] Démarrage de loadAllPosts (scroll vers le haut)...');
+                    let postCount = 0;
+                    let currentPostCount = document.querySelectorAll('.topic-post').length; // Compteur de posts après le scroll
+                    let iteration = 1;
+                    console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: ${currentPostCount} posts trouvés initialement.`);
+
+                    while (currentPostCount > postCount) {
+                        postCount = currentPostCount;
+                        console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: Scroll vers le HAUT...`);
+                        window.scrollTo(0, 0);
+
+                        console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: Attente de 2 secondes...`);
+                        // TODO : MutationObserver.
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+
+                        currentPostCount = document.querySelectorAll('.topic-post').length; // Recompter les posts
+                        iteration++;
+                        console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: ${currentPostCount} posts trouvés maintenant (précédemment ${postCount}).`);
+                    }
+                    console.log('[AI-HELPER-DEBUG] Fin de loadAllPosts. Le nombre de posts est stable.');
+                }
+
+                await loadAllPosts(); // Exécuter le chargement de tous les posts
+
+                if (lastVisiblePost) {
+                    console.log('[AI-HELPER-DEBUG] Retour au dernier post visible avant le chargement.');
+                    lastVisiblePost.scrollIntoView({ behavior: 'auto', block: 'end' });
+                }
+            }
+
+            const firstPost = document.querySelector('.topic-post:first-of-type');
+            const solutionPost = document.querySelector('.accepted-text')?.closest('.topic-post');
+
+            const posts = Array.from(document.querySelectorAll('.topic-post .cooked'));
+            let fullText = '';
+            const separator = '\n\n---\n\n';
+            let includedPostsCount = 0;
+            let currentFullTextLength = 0;
+
+            for (const post of posts) {
+                const postText = post.innerText;
+                const potentialLength = currentFullTextLength + postText.length + (includedPostsCount > 0 ? separator.length : 0);
+                if (potentialLength > limit) {
+                    console.log(`[AI-HELPER-DEBUG] Limite maxDiscussionSize atteinte (${limit} caractères). Arrêt de l'ajout des posts.`);
+                    break;
+                }
+                if (includedPostsCount > 0) {
+                    fullText += separator;
+                }
+                fullText += postText;
+                currentFullTextLength = fullText.length;
+                includedPostsCount++;
+            }
+
+            console.log(`[AI-HELPER-DEBUG] Construction du fullText terminée.`);
+            console.log(`[AI-HELPER-DEBUG] Posts total disponibles (après chargement): ${posts.length}`);
+            console.log(`[AI-HELPER-DEBUG] Posts inclus dans fullText: ${includedPostsCount}`);
+            console.log(`[AI-HELPER-DEBUG] Longueur finale du fullText: ${fullText.length} caractères.`);
+            console.log(`[AI-HELPER-DEBUG] Limite maxDiscussionSize utilisée: ${limit} caractères.`);
+
+            // Préparer les données à envoyer
+            const data = {
+                title: document.querySelector('a.fancy-title')?.innerText.trim(), // Titre de la discussion
+                categories: Array.from(document.querySelectorAll('.topic-category .badge-category__name')).map(c => c.innerText), // Catégories
+                tags: Array.from(document.querySelectorAll('.list-tags .discourse-tag')).map(t => t.innerText), // Tags
+                firstPost: firstPost?.querySelector('.cooked')?.innerText, // Contenu du premier post
+                solutionPost: solutionPost?.querySelector('.cooked')?.innerText.trim() || null, // Contenu du post solution (s'il existe)
+                fullText: fullText, // Texte complet de la discussion (tronqué si nécessaire)
+                postCount: document.querySelectorAll('.topic-post').length, // Nombre total de posts détectés
+                originalPosterUsername: firstPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(), // Nom d'utilisateur de l'auteur original
+                originalPosterAvatar: firstPost?.querySelector('.post-avatar .avatar')?.src, // Avatar de l'auteur original
+                solutionAuthorUsername: solutionPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(), // Nom d'utilisateur de l'auteur de la solution
+                solutionAuthorAvatar: solutionPost?.querySelector('.post-avatar .avatar')?.src, // Avatar de l'auteur de la solution
+                solutionLink: solutionPost ? new URL(solutionPost.querySelector('.post-date a').href).pathname : null // Lien vers la solution
+            };
+
+            if (data.tags.length > 0) {
+                devApi.storage.local.get('allKnownTags', (result) => {
+                    const knownTags = new Set(result.allKnownTags || []);
+                    data.tags.forEach(tag => knownTags.add(tag));
+                    devApi.storage.local.set({ allKnownTags: Array.from(knownTags).sort() });
+                });
+            }
+
+            sendResponse(data);
+        })();
         return true;
     }
 
@@ -397,9 +475,15 @@ function createCodeAiModal() {
     copyBtn.title = 'Copier le contenu';
     const copySvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     copySvg.setAttribute("width", "18"); copySvg.setAttribute("height", "18"); copySvg.setAttribute("viewBox", "0 0 24 24");
-    copySvg.setAttribute("fill", "none"); copySvg.setAttribute("stroke", "currentColor"); copySvg.setAttribute("stroke-width", "2");
+    copySvg.setAttribute("fill", "none"); copySvg.setAttribute("stroke", "currentColor");
+    copySvg.setAttribute("stroke-width", "2");
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", "9"); rect.setAttribute("y", "9"); rect.setAttribute("width", "13"); rect.setAttribute("height", "13"); rect.setAttribute("rx", "2"); rect.setAttribute("ry", "2");
+    rect.setAttribute("x", "9");
+    rect.setAttribute("y", "9");
+    rect.setAttribute("width", "13");
+    rect.setAttribute("height", "13");
+    rect.setAttribute("rx", "2");
+    rect.setAttribute("ry", "2");
     copySvg.appendChild(rect);
     copyBtn.appendChild(copySvg);
 
@@ -420,8 +504,13 @@ function createCodeAiModal() {
     document.body.appendChild(modal);
 
     closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-    copyBtn.addEventListener('click', (e) => { e.stopPropagation(); copyModalContentToClipboard(copyBtn); });
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+    copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyModalContentToClipboard(copyBtn);
+    });
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
 }
 
 function showCodeAiModal(content, isHtml = true) {
@@ -438,8 +527,6 @@ function showCodeAiModal(content, isHtml = true) {
 
 function renderRichText(container, html) {
     const temp = document.createElement('div');
-    // Using a safer approach for trusted IA content, but still avoiding innerHTML for validation
-    // Here we parse the minimal HTML tags returned by our IA (<b>, <ul>, <li>, <pre>, <code>, <p>)
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     container.replaceChildren(...Array.from(doc.body.childNodes));
@@ -455,7 +542,10 @@ function handleCodeActionClick(action, button, codeElement) {
 
     showCodeAiModal("Analyse en cours...", false);
 
-    devApi.runtime.sendMessage({ type: action, code: code }, (response) => {
+    devApi.runtime.sendMessage({
+        type: action,
+        code: code
+    }, (response) => {
         if (response.error) {
             showCodeAiModal(`Erreur: ${response.error}`, false);
         } else {
@@ -471,7 +561,9 @@ function copyModalContentToClipboard(button) {
     navigator.clipboard.writeText(text).then(() => {
         const original = Array.from(button.childNodes);
         button.textContent = 'Copié !';
-        setTimeout(() => { button.replaceChildren(...original); }, 1500);
+        setTimeout(() => {
+            button.replaceChildren(...original);
+        }, 1500);
     });
 }
 
@@ -486,12 +578,27 @@ function processCodeBlocks() {
         const container = document.createElement('div');
         container.className = 'code-action-buttons';
 
-        const actions = [
-            { id: 'explain', title: 'Expliquer', iconD: SPELL_ICON_D, action: 'explainCode' },
-            { id: 'verify', title: 'Vérifier', iconD: REPHRASE_ICON_D, action: 'verifyCode' },
-            { id: 'optimize', title: 'Optimiser', iconD: REPHRASE_ICON_D, action: 'optimizeCode' },
-            { id: 'comment', title: 'Commenter', iconD: SPELL_ICON_D, action: 'commentCode' }
-        ];
+        const actions = [{
+            id: 'explain',
+            title: 'Expliquer',
+            iconD: SPELL_ICON_D,
+            action: 'explainCode'
+        }, {
+            id: 'verify',
+            title: 'Vérifier',
+            iconD: REPHRASE_ICON_D,
+            action: 'verifyCode'
+        }, {
+            id: 'optimize',
+            title: 'Optimiser',
+            iconD: REPHRASE_ICON_D,
+            action: 'optimizeCode'
+        }, {
+            id: 'comment',
+            title: 'Commenter',
+            iconD: SPELL_ICON_D,
+            action: 'commentCode'
+        }];
 
         actions.forEach(a => {
             const btn = document.createElement('button');
@@ -499,7 +606,8 @@ function processCodeBlocks() {
             btn.title = a.title;
             btn.appendChild(createSvgElement(a.iconD));
             btn.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
+                e.preventDefault();
+                e.stopPropagation();
                 handleCodeActionClick(a.action, btn, code);
             });
             container.appendChild(btn);
@@ -525,7 +633,9 @@ function processEditors() {
             if (close) text += close.content.trim();
             if (text) {
                 editor.value = text;
-                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                editor.dispatchEvent(new Event('input', {
+                    bubbles: true
+                }));
             }
         }
         processedEditorIds.add(id);

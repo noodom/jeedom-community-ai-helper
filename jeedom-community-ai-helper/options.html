@@ -6,6 +6,7 @@
     <title>Paramètres de Jeedom Community AI Helper</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Variables CSS personnalisées pour le thème Jeedom */
         :root {
             --jeedom-dark: #2e3d4c;
             --jeedom-green: #94ca02;
@@ -133,7 +134,7 @@
             color: white;
         }
 
-        /* Tag list specific */
+        /* Spécifique à la liste des tags */
         #tag-links-list {
             margin-top: 15px;
             border: 1px solid var(--jeedom-border);
@@ -172,7 +173,7 @@
             font-size: 13px;
         }
 
-        /* Paragraph list specific */
+        /* Spécifique à la liste des paragraphes */
         #paragraphs-list {
             margin-top: 15px;
             border: 1px solid var(--jeedom-border);
@@ -206,7 +207,7 @@
             white-space: pre-wrap;
         }
 
-        /* Persona specific */
+        /* Spécifique aux Personas */
         .persona-container {
             display: flex;
             gap: 30px;
@@ -268,7 +269,7 @@
             text-align: center;
         }
 
-        /* Footer */
+        /* Pied de page */
         .footer-bandeau {
             background-color: var(--jeedom-dark) !important;
             border-radius: 0 0 8px 8px;
@@ -282,7 +283,7 @@
             font-weight: bold;
         }
 
-        /* Autocomplete for tags */
+        /* Autocomplétion pour les tags */
         .autocomplete-container {
             position: relative;
         }
@@ -407,7 +408,7 @@
                 <div class="form-group">
                     <label for="persona-model">Modèle d'IA</label>
                     <select id="persona-model" class="ai-model-select">
-                        <!-- Options will be dynamically populated by JS -->
+                        <!-- Les options seront remplies dynamiquement par JS -->
                     </select>
                 </div>
             </div>
@@ -436,6 +437,18 @@
          style="display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px; margin-top: 10px;">
         <label for="fontSize" style="margin-bottom: 0;">Taille de la police de la fenêtre de l'extension (px) :</label>
         <input type="number" id="fontSize" min="10" max="24" step="1" style="width: 60px;">
+    </div>
+    <div class="form-group"
+         style="display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px; margin-top: 10px;">
+        <label for="maxDiscussionSize" style="margin-bottom: 0;">Taille max de la discussion (caractères) :</label>
+        <input type="number" id="maxDiscussionSize" min="1000" max="500000" step="1000" style="width: 100px;">
+        <small style="color: #666; margin-left: 10px;">Limite la quantité de texte envoyée à l'IA pour économiser les tokens.</small>
+    </div>
+    <div class="form-group"
+         style="display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px; margin-top: 10px;">
+        <input type="checkbox" id="forceLoadAllPosts" style="width: 20px; height: 20px; cursor: pointer;">
+        <label for="forceLoadAllPosts" style="margin-bottom: 0; cursor: pointer;">Forcer le chargement de tous les posts (via scroll)</label>
+        <small style="color: #666; margin-left: 10px;">Décocher si les résumés de longues discussions ne sont pas nécessaires.</small>
     </div>
     <hr>
     <h2>Visibilité des boutons d'action</h2>
@@ -468,7 +481,7 @@
             <label for="model-summarizeDiscussion">Résumé de Discussion</label>
             <select id="model-summarizeDiscussion" class="ai-model-select">
                 <option value="default">Défaut (Persona/Fallback)</option>
-                <!-- Options will be dynamically populated by JS -->
+                <!-- Les options seront remplies dynamiquement par JS -->
             </select>
         </div>
         <div class="form-group">
@@ -529,14 +542,14 @@
             <label for="default-opening-paragraph">Paragraphe de début par défaut</label>
             <select id="default-opening-paragraph">
                 <option value="">Aucun</option>
-                <!-- Options populated by JS -->
+                <!-- Les options remplies par JS -->
             </select>
         </div>
         <div class="form-group">
             <label for="default-closing-paragraph">Paragraphe de fin par défaut</label>
             <select id="default-closing-paragraph">
                 <option value="">Aucun</option>
-                <!-- Options populated by JS -->
+                <!-- Les options remplies par JS -->
             </select>
         </div>
     </div>
@@ -572,7 +585,7 @@
          style="background-color:#673ab7;text-align: center; margin-top: 20px; padding: 10px; border-top: 1px solid #eee; font-size: 0.9em; color: #fff;">
         <p>Développé par Noodom</p>
         <a href="https://github.com/noodom" target="_blank" rel="noopener noreferrer"><img src="images/noodom.jpg"
-                                                                                           alt="Noodom Logo"
+                                                                                           alt="Logo Noodom"
                                                                                            style="border-radius:50%;width: 48px; height: 48px; vertical-align: middle; margin-left: 5px;"></a>
         <p>Version: <span id="extension-version"></span></p>
         <a href="https://paypal.me/noodomfr" target="_blank" rel="noopener noreferrer">
