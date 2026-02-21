@@ -74,7 +74,7 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getDiscussionData') {
         (async () => {
             const settings = await devApi.storage.local.get(['maxDiscussionSize', 'forceLoadAllPosts']);
-            const limit = settings.maxDiscussionSize || 30000; // Limite par défaut
+            const limit = settings.maxDiscussionSize || 30000;
             const shouldForceScroll = settings.forceLoadAllPosts !== undefined ? settings.forceLoadAllPosts : true;
 
             if (shouldForceScroll) {
@@ -90,32 +90,21 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
 
                 async function loadAllPosts() {
-                    console.log('[AI-HELPER-DEBUG] Démarrage de loadAllPosts (scroll vers le haut)...');
                     let postCount = 0;
-                    let currentPostCount = document.querySelectorAll('.topic-post').length; // Compteur de posts après le scroll
-                    let iteration = 1;
-                    console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: ${currentPostCount} posts trouvés initialement.`);
-
+                    let currentPostCount = document.querySelectorAll('.topic-post').length;
                     while (currentPostCount > postCount) {
                         postCount = currentPostCount;
-                        console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: Scroll vers le HAUT...`);
                         window.scrollTo(0, 0);
 
-                        console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: Attente de 2 secondes...`);
                         // TODO : MutationObserver.
                         await new Promise(resolve => setTimeout(resolve, 2000));
-
-                        currentPostCount = document.querySelectorAll('.topic-post').length; // Recompter les posts
-                        iteration++;
-                        console.log(`[AI-HELPER-DEBUG] Itération ${iteration}: ${currentPostCount} posts trouvés maintenant (précédemment ${postCount}).`);
+                        currentPostCount = document.querySelectorAll('.topic-post').length;
                     }
-                    console.log('[AI-HELPER-DEBUG] Fin de loadAllPosts. Le nombre de posts est stable.');
                 }
 
-                await loadAllPosts(); // Exécuter le chargement de tous les posts
+                await loadAllPosts();
 
                 if (lastVisiblePost) {
-                    console.log('[AI-HELPER-DEBUG] Retour au dernier post visible avant le chargement.');
                     lastVisiblePost.scrollIntoView({ behavior: 'auto', block: 'end' });
                 }
             }
@@ -133,7 +122,6 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const postText = post.innerText;
                 const potentialLength = currentFullTextLength + postText.length + (includedPostsCount > 0 ? separator.length : 0);
                 if (potentialLength > limit) {
-                    console.log(`[AI-HELPER-DEBUG] Limite maxDiscussionSize atteinte (${limit} caractères). Arrêt de l'ajout des posts.`);
                     break;
                 }
                 if (includedPostsCount > 0) {
@@ -144,26 +132,19 @@ devApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 includedPostsCount++;
             }
 
-            console.log(`[AI-HELPER-DEBUG] Construction du fullText terminée.`);
-            console.log(`[AI-HELPER-DEBUG] Posts total disponibles (après chargement): ${posts.length}`);
-            console.log(`[AI-HELPER-DEBUG] Posts inclus dans fullText: ${includedPostsCount}`);
-            console.log(`[AI-HELPER-DEBUG] Longueur finale du fullText: ${fullText.length} caractères.`);
-            console.log(`[AI-HELPER-DEBUG] Limite maxDiscussionSize utilisée: ${limit} caractères.`);
-
-            // Préparer les données à envoyer
             const data = {
-                title: document.querySelector('a.fancy-title')?.innerText.trim(), // Titre de la discussion
-                categories: Array.from(document.querySelectorAll('.topic-category .badge-category__name')).map(c => c.innerText), // Catégories
-                tags: Array.from(document.querySelectorAll('.list-tags .discourse-tag')).map(t => t.innerText), // Tags
-                firstPost: firstPost?.querySelector('.cooked')?.innerText, // Contenu du premier post
-                solutionPost: solutionPost?.querySelector('.cooked')?.innerText.trim() || null, // Contenu du post solution (s'il existe)
-                fullText: fullText, // Texte complet de la discussion (tronqué si nécessaire)
-                postCount: document.querySelectorAll('.topic-post').length, // Nombre total de posts détectés
-                originalPosterUsername: firstPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(), // Nom d'utilisateur de l'auteur original
-                originalPosterAvatar: firstPost?.querySelector('.post-avatar .avatar')?.src, // Avatar de l'auteur original
-                solutionAuthorUsername: solutionPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(), // Nom d'utilisateur de l'auteur de la solution
-                solutionAuthorAvatar: solutionPost?.querySelector('.post-avatar .avatar')?.src, // Avatar de l'auteur de la solution
-                solutionLink: solutionPost ? new URL(solutionPost.querySelector('.post-date a').href).pathname : null // Lien vers la solution
+                title: document.querySelector('a.fancy-title')?.innerText.trim(),
+                categories: Array.from(document.querySelectorAll('.topic-category .badge-category__name')).map(c => c.innerText),
+                tags: Array.from(document.querySelectorAll('.list-tags .discourse-tag')).map(t => t.innerText),
+                firstPost: firstPost?.querySelector('.cooked')?.innerText,
+                solutionPost: solutionPost?.querySelector('.cooked')?.innerText.trim() || null,
+                fullText: fullText,
+                postCount: document.querySelectorAll('.topic-post').length,
+                originalPosterUsername: firstPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(),
+                originalPosterAvatar: firstPost?.querySelector('.post-avatar .avatar')?.src,
+                solutionAuthorUsername: solutionPost?.querySelector('.topic-meta-data .names span')?.innerText.trim(),
+                solutionAuthorAvatar: solutionPost?.querySelector('.post-avatar .avatar')?.src,
+                solutionLink: solutionPost ? new URL(solutionPost.querySelector('.post-date a').href).pathname : null
             };
 
             if (data.tags.length > 0) {

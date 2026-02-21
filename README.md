@@ -38,7 +38,7 @@ Cette extension analyse les discussions, génère des résumés concis et vous a
 
 ## Fonctionnalités principales
 
-- **Analyse de discussion** : Ouvrez un sujet du forum et obtenez un résumé en un clic (problématique, solution, résumé des échanges).
+- **Analyse de discussion** : Ouvrez un sujet du forum et obtenez un résumé en un clic (problématique, solution, résumé des échanges). Une option permet de contrôler le chargement de tous les posts.
 - **Génération et reformulation de réponses** : Créez ou reformulez des réponses directement dans l'éditeur du forum en utilisant des styles prédéfinis (personas).
 - **Réponses pré-enregistrées** : Gérez une bibliothèque de paragraphes pour les insérer rapidement dans vos messages. Définissez des paragraphes de début et de fin par défaut pour automatiser la rédaction.
 - **Correction Orthographique et Grammaticale** : Utilisez l'API de LanguageTool pour corriger le texte de vos réponses.
@@ -48,6 +48,7 @@ Cette extension analyse les discussions, génère des résumés concis et vous a
     - **Enrichissement contextuel** : Fournissez à l'IA des liens vers des documentations spécifiques grâce aux "Liens par Tag".
     - **Sélection de modèle d'IA** : Attribuez des modèles Gemini spécifiques (Flash, Pro) pour différentes tâches (résumé, explication de code, etc.).
     - **Interface personnalisable** : Choisissez les boutons d'action à afficher dans la barre d'outils de l'éditeur.
+    - **Gestion de la taille de discussion** : Limitez la quantité de texte de discussion envoyée à l'IA pour économiser les tokens.
 - **Interface intégrée et intuitive** : L'extension ajoute ses fonctionnalités directement dans l'interface du forum pour une expérience fluide et non intrusive.
 
 ---
@@ -104,7 +105,10 @@ L'extension utilise l'API de Google Gemini. Vous devez posséder votre propre cl
 1. Faites un clic droit sur l'icône de l'extension dans votre barre d'outils et sélectionnez **"Options"**.
 2. **Clé API Gemini** : Collez la clé API que vous venez de copier. C'est le seul paramètre obligatoire.
 3. **Personas** : L'extension vient avec 4 personas par défaut. Vous pouvez les modifier, les supprimer ou en créer de nouvelles.
-4. **Apparence des réponses** : Cochez la case si vous autorisez l'IA à utiliser des emojis pour rendre les réponses plus conviviales.
+4. **Apparence des réponses** :
+    - Cochez la case si vous autorisez l'IA à utiliser des emojis pour rendre les réponses plus conviviales.
+    - **Taille max de la discussion (caractères)** : Définissez une limite de caractères pour la discussion envoyée à l'IA. Utile pour contrôler la consommation de tokens et éviter les erreurs sur les posts très longs.
+    - **Forcer le chargement de tous les posts (via scroll)** : Activez cette option si vous souhaitez que l'extension scrolle automatiquement la page pour charger tous les posts d'une discussion avant de l'analyser. Décochez-la si vous préférez n'analyser que les posts visibles à l'écran, ce qui peut être plus rapide pour les discussions courtes.
 5. **Modèles d'IA et Liens par Tag** : Configurez des options avancées pour un contrôle plus fin.
 6. **Enregistrez** : Cliquez sur "ENREGISTRER TOUS LES PARAMÈTRES".
 
@@ -120,6 +124,7 @@ L'extension utilise l'API de Google Gemini. Vous devez posséder votre propre cl
    - La solution si elle est marquée sur le forum.
    - Un résumé des échanges.
    - Les tags et catégories du sujet.
+   Une fois l'analyse terminée, la page retrouvera sa position de lecture initiale.
 3. **Copier le contenu** : Chaque section du résumé dispose d'un bouton pour copier son contenu dans le presse-papiers.
 
 ### 2. Interagir avec les blocs de code
@@ -258,5 +263,3 @@ Dans la section "Visibilité des boutons d'action", vous pouvez cocher ou décoc
 Développé par **Noodom**.
 
 [![Faire un don via PayPal](jeedom-community-ai-helper/images/paypal.svg)](https://paypal.me/noodomfr)
-
-
