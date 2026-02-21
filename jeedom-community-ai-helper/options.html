@@ -325,6 +325,61 @@
         .action-buttons-visibility .form-group label {
             margin-bottom: 0;
         }
+
+        .form-group input[type="checkbox"] {
+            /* Masquer la case à cocher par défaut */
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 20px; /* Conserver la taille souhaitée */
+            height: 20px; /* Conserver la taille souhaitée */
+            border: 2px solid var(--jeedom-border);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+            margin: 0; /* Réinitialiser la marge par défaut */
+            display: inline-block; /* Assurer qu'il occupe de l'espace pour les clics */
+            vertical-align: middle; /* Aligner avec le texte du label */
+            flex-shrink: 0; /* Empêcher le rétrécissement dans un conteneur flex */
+            transition: all 0.2s ease-in-out;
+        }
+
+        .form-group input[type="checkbox"]::before {
+            content: '';
+            display: block;
+            width: 12px; /* Taille du coche intérieur */
+            height: 12px; /* Taille du coche intérieur */
+            background-color: var(--jeedom-green);
+            border-radius: 2px;
+            transform: scale(0); /* Caché par défaut */
+            transition: transform 0.2s ease-in-out;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0); /* Centrer et masquer */
+        }
+
+        .form-group input[type="checkbox"]:checked {
+            border-color: var(--jeedom-green); /* Bordure verte si cochée */
+            background-color: var(--jeedom-green); /* Fond vert si cochée */
+        }
+
+        .form-group input[type="checkbox"]:checked::before {
+            transform: translate(-50%, -50%) scale(1); /* Afficher le coche */
+            background-color: white; /* Coche blanc sur fond vert */
+            mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>') no-repeat center center;
+            mask-size: cover;
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>') no-repeat center center;
+            -webkit-mask-size: cover;
+        }
+
+        .action-buttons-visibility .form-group label,
+        .form-group label[for="enableIcons"],
+        .form-group label[for="forceLoadAllPosts"] {
+            margin-bottom: 0;
+            cursor: pointer; /* Indiquer que le label est cliquable */
+        }
     </style>
 </head>
 
